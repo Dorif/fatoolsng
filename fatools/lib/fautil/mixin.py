@@ -380,7 +380,7 @@ class ChannelMixIn(object):
         (dpscore, rss, z, aligned_peaks) = results
         #qcscore, remarks = algo.score_ladder(rss, len(aligned_peak), len(ladder_sizes))
 
-        f = np.poly1d(z)
+        f = np.polynomial.polynomial.Polynomial(z)
         for (std_size, peak) in aligned_peaks:
             peak.size = std_size
             peak.type = peaktype.ladder

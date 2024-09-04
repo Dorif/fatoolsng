@@ -101,7 +101,7 @@ def align_pm(peaks, ladder, anchor_pairs=None):
 
 
     new_anchor_pairs = []
-    zf = np.poly1d(dp_result.z)
+    zf = np.polynomial.polynomial.Polynomial(dp_result.z)
     for p in dp_result.sized_peaks:
         if (p[0] - zf(p[1]))**2 < 2:
             new_anchor_pairs.append( (p[1], p[0]) )
@@ -252,7 +252,7 @@ def align_upper_pm(peaks, ladder, anchor_pairs, anchor_z):
 
     # check the first
     #print(peaks[-1])
-    est_last_bpsize = np.poly1d(anchor_z)(peaks[-1].rtime)
+    est_last_bpsize = np.polynomial.polynomial.Polynomial(anchor_z)(peaks[-1].rtime)
     #est_last_bpsize = anchor_z[1] * peaks[-1].rtime**2 + anchor_z[2] * peaks[-1].rtime + anchor_z[3]
     #print(est_last_bpsize)
     last_bpsize = max( remaining_sizes[1], [ s for s in sizes if s < est_last_bpsize ][-3] )

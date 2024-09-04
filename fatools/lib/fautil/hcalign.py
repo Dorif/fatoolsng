@@ -191,7 +191,7 @@ def is_good_pairing( pairs ):
 
     rtimes, bpsizes = zip( *pairs )
     zres = estimate_z(rtimes, bpsizes, 1)
-    #f = np.poly1d(zres.z)
+    #f = np.polynomial.polynomial.Polynomial(zres.z)
     #for (rtime, bpsize) in pairs:
     #    print(':', rtime, bpsize, (f(rtime)-bpsize)**2)
     #print(rss)

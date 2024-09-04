@@ -21,8 +21,8 @@ def estimate_z( x, y, degree = 3 ):
         y ~ f(x) where f = poly1d(z)
         rss ~ SUM( (f(x) - y)**2 ) for all (x,y)
     """
-    z = np.polyfit( x, y, degree )
-    p = np.poly1d( z )
+    z = np.polynomial.polynomial.Polynomial.fit( x, y, degree )
+    p = np.polynomial.polynomial.Polynomial( z )
     y_p = p(x)
     rss = ( (y_p - y) ** 2 ).sum()
 
@@ -48,7 +48,7 @@ def align_peaks( ladders, peaks, z, rss ):
 
     while True:
 
-        S = generate_scores( ladders, peaks, np.poly1d(z))
+        S = generate_scores( ladders, peaks, np.polynomial.polynomial.Polynomial(z))
 
         #pprint.pprint(S)
 
@@ -134,7 +134,7 @@ def plot_z(peaks, ladders, z):
     #x = np.linspace(0, peaks[-1].rtime + 100)
     
     x = np.linspace(0, max(ladders))
-    p = np.poly1d( z )
+    p = np.polynomial.polynomial.Polynomial( z )
     y_p = p(x)
 
     plt.plot(x, y_p)
