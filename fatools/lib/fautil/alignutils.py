@@ -63,8 +63,8 @@ def estimate_z( x, y, degree = 3 ):
         y ~ f(x) where f = poly1d(z)
         rss ~ SUM( (f(x) - y)**2 ) for all (x,y)
     """
-    z = np.polynomial.polynomial.Polynomial.fit( x, y, degree )
-    p = np.polynomial.polynomial.Polynomial( z )
+    z = np.polyfit( x, y, degree )
+    p = np.poly1d( z )
     y_p = p(x)
     rss = ( (y_p - y) ** 2 ).sum()
 
@@ -211,7 +211,7 @@ def plot(rtimes, sizes, z, peak_pairs):
     min_x = min(rtimes) - 100
     range_x = max_x - min_x
     x = np.linspace(min_x, max_x, range_x+1)
-    f = np.polynomial.polynomial.Polynomial(z)
+    f = np.poly1d(z)
     y = f(x)
 
     plt.plot(x, y)
@@ -236,7 +236,7 @@ def align_dp( rtimes, sizes, similarity, z, rss, order = 3):
 
     while True:
 
-        S = generate_scores( sizes, rtimes, similarity, np.polynomial.polynomial.Polynomial(z))
+        S = generate_scores( sizes, rtimes, similarity, np.poly1d(z))
 
         result = dp(S, -5) #-5e-3)
 

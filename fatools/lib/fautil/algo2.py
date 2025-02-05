@@ -85,7 +85,7 @@ def scan_peaks(channel, params, offset=0):
         if len(channel.fsa.ztranspose) <= 0:
             raise RuntimeError('ztranspose has not been calculated!')
         min_size = channel.marker.min_size
-        f = np.polynomial.polynomial.Polynomial( channel.fsa.ztranspose )
+        f = np.poly1d( channel.fsa.ztranspose )
         offset = int(round(f(min_size)))
         channel.offset = offset
 
@@ -132,7 +132,7 @@ def align_peaks(channel, params, ladder, anchor_pairs=None):
 
     alignresult = align_ladder( alleles, ladder, anchor_pairs)
 
-    f = np.polynomial.polynomial.Polynomial( alignresult.dpresult.z )
+    f = np.poly1d( alignresult.dpresult.z )
     for (size, allele) in alignresult.dpresult.sized_peaks:
         allele.dev = abs( f(allele.rtime) - size)
         allele.size = size
@@ -176,7 +176,7 @@ def align_ladder( alleles, ladder, anchor_pairs):
 
     # add relevant info to peaks
     aligned_peaks = result[2][3]
-    f = np.polynomial.polynomial.Polynomial( result[2][2] )
+    f = np.poly1d( result[2][2] )
     for (size, p) in aligned_peaks:
         p.dev = abs( f(p.rtime) - size)
         p.size = size
@@ -685,13 +685,13 @@ def local_southern( ladder_alleles ):
         idx = ladder_allele_sorted.bisect_key_right( rtime )
 
         # left curve
-        z1 = np.polynomial.polynomial.Polynomial.fit( x[idx-2:idx+1], y[idx-2:idx+1], 2)
-        size1 = np.polynomial.polynomial.Polynomial( z1 )(rtime)
+        z1 = np.polyfit( x[idx-2:idx+1], y[idx-2:idx+1], 2)
+        size1 = np.poly1d( z1 )(rtime)
         min_score1 = min( x.qscore for x in ladder_allele_sorted[idx-2:idx+1] )
 
         # right curve
-        z2 = np.polynomial.polynomial.Polynomial.fit( x[idx-1:idx+2], y[idx-1:idx+2], 2)
-        size2 = np.polynomial.polynomial.Polynomial( z2 )(rtime)
+        z2 = np.polyfit( x[idx-1:idx+2], y[idx-1:idx+2], 2)
+        size2 = np.poly1d( z2 )(rtime)
         min_score2 = min( x.qscore for x in ladder_allele_sorted[idx-1:idx+2] )
 
         return ( (size1 + size2)/2, (size1 - size2) ** 2, (min_score1 + min_score2)/2,

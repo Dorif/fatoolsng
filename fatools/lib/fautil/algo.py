@@ -759,7 +759,7 @@ def least_square( ladder_alleles, z ):
     """ 3rd order polynomial resolver
     """
     ladder_allele_sorted = SortedListWithKey( ladder_alleles, key = lambda k: k.rtime )
-    f = np.polynomial.polynomial.Polynomial(z)
+    f = np.poly1d(z)
 
     def _f( rtime ):
         size = f(rtime)
@@ -826,13 +826,13 @@ def local_southern( ladder_alleles ):
         idx = ladder_allele_sorted.bisect_key_right( rtime )
 
         # left curve
-        z1 = np.polynomial.polynomial.Polynomial.fit( x[idx-2:idx+1], y[idx-2:idx+1], 2)
-        size1 = np.polynomial.polynomial.Polynomial( z1 )(rtime)
+        z1 = np.polyfit( x[idx-2:idx+1], y[idx-2:idx+1], 2)
+        size1 = np.poly1d( z1 )(rtime)
         min_score1 = min( x.qscore for x in ladder_allele_sorted[idx-2:idx+1] )
 
         # right curve
-        z2 = np.polynomial.polynomial.Polynomial.fit( x[idx-1:idx+2], y[idx-1:idx+2], 2)
-        size2 = np.polynomial.polynomial.Polynomial( z2 )(rtime)
+        z2 = np.polyfit( x[idx-1:idx+2], y[idx-1:idx+2], 2)
+        size2 = np.poly1d( z2 )(rtime)
         min_score2 = min( x.qscore for x in ladder_allele_sorted[idx-1:idx+2] )
 
         return ( (size1 + size2)/2, (size1 - size2) ** 2, (min_score1 + min_score2)/2,

@@ -64,7 +64,7 @@ class ZFunc(object):
 
     def get_pairs(self, z):
 
-        f = np.polynomial.polynomial.Polynomial(z)
+        f = np.poly1d(z)
         pairings = pair_f(f, self.rtimes, self.sizes, self.similarity, deviation=True)
 
         pairs = []
@@ -88,7 +88,7 @@ class ZFunc(object):
         """
 
         # prepare z function
-        f = np.polynomial.polynomial.Polynomial(z)
+        f = np.poly1d(z)
         pairs = pair_f(f, self.rtimes, self.sizes, self.similarity, deviation=True)
 
 
@@ -126,7 +126,7 @@ def align_gm( peaks, ladder, anchor_pairs, z=None):
         z = zresult.z
 
     # try pair f
-    #result = pair_f( np.polynomial.polynomial.Polynomial(z), f.rtimes, sizes)
+    #result = pair_f( np.poly1d(z), f.rtimes, sizes)
     #import pprint; pprint.pprint(result)
 
     rss = -1

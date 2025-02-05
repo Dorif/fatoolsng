@@ -248,7 +248,7 @@ def reassign_peaks( peaks, ladders, z ):
     """ reassign peaks & ladders, with (z)(rtime) -> bp size """
 
     #print(' => Z:', z)
-    f = np.polynomial.polynomial.Polynomial(z)
+    f = np.poly1d(z)
     peak_rtime = [ ( f(p.rtime), p.rtime ) for p in peaks ]
     peak_pairs = []
     for l in ladders:
@@ -262,7 +262,7 @@ def reassign_peaks( peaks, ladders, z ):
 def shift_peak_pairs( peak_pairs, z ):
     """ shift peak pairs based on the highest deviation """
 
-    f = np.polynomial.polynomial.Polynomial(z)
+    f = np.poly1d(z)
     max_i = 0
     max_value = 0
 
@@ -307,7 +307,7 @@ def estimate_peak_pairs( peaks, ladders, z ):
 
     # generate synthetic standard peaks
     standard_peaks = []
-    f = np.polynomial.polynomial.Polynomial(z)
+    f = np.poly1d(z)
     for ladder in ladders:
         standard_peaks.append( ( f(ladder), ladder ) )
 
