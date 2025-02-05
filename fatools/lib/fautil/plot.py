@@ -12,18 +12,16 @@ from fatools.lib.fautil.wavelen2rgb import wavelen2rgb
 
 
 def align_fsa(fsa):
-    """
-    Align fsa to prepare for size and retention time extraction from each allele.
-
-    Input
-    -----
-    fsa: class of fsa
-    import Params() from fatools.lib.params for parameter in fsa alignment
-
-    Output
-    ------
-    fsa that has been aligned
-    """
+    # Align fsa to prepare for size and retention time extraction from each allele.
+    #
+    # Input
+    # -----
+    # fsa: class of fsa
+    # import Params() from fatools.lib.params for parameter in fsa alignment
+    #
+    # Output
+    # ------
+    # fsa that has been aligned
     fsa.align(params.Params())
 
 
@@ -192,7 +190,8 @@ def do_split_plot(fsa, plot_file=None):
 
     for channel_axes_num, channel in enumerate(channels):
         color = colorize_wavelength(channel.wavelen)
-        channel_axes = figure.add_subplot(len(channels), 1, channel_axes_num + 1)
+        channel_axes = figure.add_subplot(len(channels), 1,
+                                          channel_axes_num + 1)
         channel_axes.plot(channel.data, color=color, label=channel.dye)
         channel_axes.legend(framealpha=0.5)
         fsa_subplots.append(channel_axes)
@@ -347,7 +346,8 @@ def command_block(args, fsas, plot_file):
             cerr('W: --plot, --split-plot and --ladder-plot are flagged')
             cerr('W: Only the --ladder-plot option will be done')
 
-        included_fsas = determine_included_fsa_to_plot(args.score, args.rss, fsas)
+        included_fsas = determine_included_fsa_to_plot(args.score, args.rss,
+                                                       fsas)
         do_ladder_plot(included_fsas, plot_file)
 
         return

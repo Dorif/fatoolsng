@@ -1,10 +1,10 @@
 import pandas, attr, yaml
-import numpy as np
+from jax.numpy import round, mean, percentile, median
 from fatools.lib.fautil.mixin import BinMixIn
 from fatools.lib.utils import cout, cerr
 from collections import defaultdict
+# from IPython import embed
 
-from IPython import embed
 
 def do_binsutil(args):
 
@@ -21,7 +21,7 @@ def do_binsutil(args):
 def do_summarize(args):
 
     d = pandas.read_table(args.infile)
-    peaks = d[ d['MARKER'] == args.marker ]
+    peaks = d[d['MARKER'] == args.marker]
     stats = bin_stats(peaks)
     for s in sorted(stats.keys()):
         cout(stats[s].repr())
@@ -31,15 +31,15 @@ def do_optimize(args):
 
     d = pandas.read_table(args.infile)
 
-    p = d[ d['MARKER'] == args.marker ].copy()
+    p = d[d['MARKER'] == args.marker].copy()
 
-    counts = np.round( p['SIZE'] )
+    counts = round(p['SIZE'])
 
     c = defaultdict(int)
     for i in counts:
         c[int(i)] += 1
 
-    bins = sorted(c.items(), key = lambda x: x[1])
+    bins = sorted(c.items(), key=lambda x: x[1])
     print(bins)
 
     tbin = Bin()
@@ -58,7 +58,8 @@ def do_optimize(args):
 
     if args.outfile:
         with open(args.outfile, 'w') as f:
-            yaml.dump({ args.marker: { 'label': args.marker, 'bins': tbin.bins}}, f)
+            yaml.dump({args.marker: {'label': args.marker, 'bins': tbin.bins}},
+                      f)
 
 
 class Bin(BinMixIn):
@@ -71,13 +72,14 @@ class Bin(BinMixIn):
         mod = anchor % repeats
         print('mod', mod)
         print('min_range', min_range)
-        min_range = (min_range // repeats -1) * repeats + mod
+        min_range = (min_range // repeats - 1) * repeats + mod
         print('min_range', min_range)
 
-        #super().initbins(min_range, max_range, repeats)
+        # super().initbins(min_range, max_range, repeats)
         self.bins = []
         for i in range(min_range, max_range, repeats):
-            self.bins.append([i, float(i) + shift, i - 0.5 + shift, i + 0.5 + shift])
+            self.bins.append([i, float(i) + shift, i - 0.5 + shift,
+                              i + 0.5 + shift])
         print(self.bins)
 
     def adjust_bins(self, containers, reset=False, repeats=-1):
@@ -92,11 +94,12 @@ class BinContainer(object):
 
     def repr(self):
         return "<Bin: %d / %5.4f / %5.4f / %5.4f - %5.4f d: %5.4f f: %d>" % (
-            self.size, np.mean(self.values), np.median(self.values), min(self.values), max(self.values), max(self.values) - min(self.values), len(self.values)
-        )
+            self.size, mean(self.values), median(self.values),
+            min(self.values), max(self.values),
+            max(self.values) - min(self.values), len(self.values))
 
     def percentile(self, q):
-        return np.percentile(self.values, q)
+        return percentile(self.values, q)
 
     def d(self):
         return max(self.values) - min(self.values)
@@ -109,11 +112,11 @@ def call_peaks(bins, peaks):
 
     sortedbins = bins.sortedbins
 
-    #embed()
+    # embed()
 
     for i in peaks.index:
         size = peaks.loc[i, 'SIZE']
-        idx = sortedbins.bisect_key_right( size )
+        idx = sortedbins.bisect_key_right(size)
 
         if idx == 0:
             curr_bin = sortedbins[0]
@@ -141,7 +144,7 @@ def bin_stats(peaks):
         try:
             b[bin_idx].values.append(size)
         except KeyError:
-            b[bin_idx] = BinContainer(size=bin_idx, values = [ size ])
+            b[bin_idx] = BinContainer(size=bin_idx, values=[size])
 
     return b
 
@@ -156,7 +159,7 @@ def adjust_bins(bins, stat, reset=False, repeats=-1):
         b = bins[idx]
         value = b[0]
         if value in stat:
-            #print('update bins', value)
+            # print('update bins', value)
             s = stat[value]
             values = sorted(s.values)
             size = len(values)
@@ -172,30 +175,31 @@ def adjust_bins(bins, stat, reset=False, repeats=-1):
                 q2 = values[idx+1:]
 
             b[1] = float(med)
-            percentiles = np.percentile( s.values, [10, 50, 90])
+            percentiles = percentile(s.values, [10, 50, 90])
             if not reset and s.d() > 0.5:
-                #b[2] = float(np.mean(q1))
-                #b[3] = float(np.mean(q2))
+                # b[2] = float(mean(q1))
+                # b[3] = float(mean(q2))
                 b[2] = float(percentiles[0])
                 b[3] = float(percentiles[2])
             else:
                 b[2] = b[1] - 0.5
                 b[3] = b[1] + 0.5
 
-            #percentiles = np.percentile( s.values, [20, 50, 80] )
-            #b[1] = float(percentiles[1])
-            #if not reset and s.d() > 1.0:
+            # percentiles = percentile( s.values, [20, 50, 80] )
+            # b[1] = float(percentiles[1])
+            # if not reset and s.d() > 1.0:
             #    b[2] = float(percentiles[0])
             #    b[3] = float(percentiles[2])
-            #else:
+            # else:
             #    if len(s.values) > 1:
-            #        avg = float(b[1] + np.mean(s.values)) / 2
+            #        avg = float(b[1] + mean(s.values)) / 2
             #    else:
             #        avg = b[1]
             #    b[2] = avg - 1.0
             #    b[3] = avg + 1.0
-                #b[2] = b[1] - 1.0
-                #b[3] = b[1] + 1.0
+            #    b[2] = b[1] - 1.0
+            #    b[3] = b[1] + 1.0
+
 
 def reset_bin_item(a_bin):
     a_bin[2] = a_bin[1] - 0.5
@@ -240,4 +244,3 @@ def reset_bins(bins, stat, repeats):
             b[1] = base_size - repeats + 0.5
             reset_bin_item(b)
         base_size = b[1]
-

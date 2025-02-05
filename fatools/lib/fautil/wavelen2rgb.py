@@ -1,14 +1,13 @@
 #!/usr/bin/python -tt
-#=======================================================================
+# ======================================================================
 #                        General Documentation
 
-"""Single-function module.  
-
-   Function and module names are the same.  See function docstring for 
+"""Single-function module.
+   Function and module names are the same.  See function docstring for
    description.
 """
 
-#-----------------------------------------------------------------------
+# ----------------------------------------------------------------------
 #                       Additional Documentation
 #
 # RCS Revision Code:
@@ -24,22 +23,20 @@
 #   test, execute "python wavelen2rgb.py".
 # - No non-"built-in" packages and modules required.
 #
-# Copyright (c) 2003 by Johnny Lin.  For licensing, distribution 
+# Copyright (c) 2003 by Johnny Lin.  For licensing, distribution
 # conditions, contact information, and additional documentation see
 # the URL http://www.johnny-lin.com/pylib.html.
-#=======================================================================
+# ======================================================================
 
+# ------------------- Overall Function Declaration ---------------------
 
-
-
-#-------------------- Overall Function Declaration ---------------------
 
 def wavelen2rgb(Wavelength, MaxIntensity=100):
     """Calculate RGB values given the wavelength of visible light.
 
     Arguments:
     * Wavelength:  Wavelength in nm.  Scalar floating.
-    * MaxIntensity:  The RGB value for maximum intensity.  Scalar 
+    * MaxIntensity:  The RGB value for maximum intensity.  Scalar
       integer.
 
     Returns:
@@ -65,10 +62,7 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
     [[0, 0, 0], [131, 0, 181], [255, 190, 0]]
     """
 
-
-
-
-#--------------------------- Helper Function ---------------------------
+# -------------------------- Helper Function ---------------------------
 
     def Adjust_and_Scale(Color, Factor, Highest=100):
         """Gamma adjustment.
@@ -77,13 +71,13 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
         * Color:  Value of R, G, or B, on a scale from 0 to 1, inclusive,
           with 0 being lowest intensity and 1 being highest.  Floating
           point value.
-        * Factor:  Factor obtained to have intensity fall off at limits 
+        * Factor:  Factor obtained to have intensity fall off at limits
           of human vision.  Floating point value.
-        * Highest:  Maximum intensity of output, scaled value.  The 
+        * Highest:  Maximum intensity of output, scaled value.  The
           lowest intensity is 0.  Scalar integer.
 
-        Returns an adjusted and scaled value of R, G, or B, on a scale 
-        from 0 to Highest, inclusive, as an integer, with 0 as the lowest 
+        Returns an adjusted and scaled value of R, G, or B, on a scale
+        from 0 to Highest, inclusive, as an integer, with 0 as the lowest
         and Highest as highest intensity.
 
         Since this is a helper function I keep its existence hidden.
@@ -95,57 +89,55 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
         if Color == 0.0:
             result = 0
         else:
-            result = int( round(pow(Color * Factor, Gamma) * round(Highest)) )
-            if result < 0:        result = 0
-            if result > Highest:  result = Highest
+            result = int(round(pow(Color * Factor, Gamma) * round(Highest)))
+            if result < 0:
+                result = 0
+            if result > Highest:
+                result = Highest
 
         return result
 
+# ----------------------- Overall Function Code ------------------------
 
-
-
-#------------------------ Overall Function Code ------------------------
-
-    #- Set RGB values (normalized in range 0 to 1) depending on
+    # Set RGB values (normalized in range 0 to 1) depending on
     #  heuristic wavelength intervals:
 
     if (Wavelength >= 380.0) and (Wavelength < 440.0):
-        Red   = -(Wavelength - 440.) / (440. - 380.)
+        Red = -(Wavelength - 440.) / (440. - 380.)
         Green = 0.0
-        Blue  = 1.0
+        Blue = 1.0
 
     elif (Wavelength >= 440.0) and (Wavelength < 490.0):
-        Red   = 0.0
+        Red = 0.0
         Green = (Wavelength - 440.) / (490. - 440.)
-        Blue  = 1.0
+        Blue = 1.0
 
     elif (Wavelength >= 490.0) and (Wavelength < 510.0):
-        Red   = 0.0
+        Red = 0.0
         Green = 1.0
-        Blue  = -(Wavelength - 510.) / (510. - 490.)
+        Blue = -(Wavelength - 510.) / (510. - 490.)
 
     elif (Wavelength >= 510.0) and (Wavelength < 580.0):
-        Red   = (Wavelength - 510.) / (580. - 510.)
+        Red = (Wavelength - 510.) / (580. - 510.)
         Green = 1.0
-        Blue  = 0.0
+        Blue = 0.0
 
     elif (Wavelength >= 580.0) and (Wavelength < 645.0):
-        Red   = 1.0
+        Red = 1.0
         Green = -(Wavelength - 645.) / (645. - 580.)
-        Blue  = 0.0
+        Blue = 0.0
 
     elif (Wavelength >= 645.0) and (Wavelength <= 780.0):
-        Red   = 1.0
+        Red = 1.0
         Green = 0.0
-        Blue  = 0.0
+        Blue = 0.0
 
     else:
-        Red   = 0.0
+        Red = 0.0
         Green = 0.0
-        Blue  = 0.0
+        Blue = 0.0
 
-
-    #- Let the intensity fall off near the vision limits:
+    # Let the intensity fall off near the vision limits:
 
     if (Wavelength >= 380.0) and (Wavelength < 420.0):
         Factor = 0.3 + 0.7*(Wavelength - 380.) / (420. - 380.)
@@ -156,26 +148,22 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
     else:
         Factor = 0.0
 
-
-    #- Adjust and scale RGB values to 0 to MaxIntensity integer range:
+    # Adjust and scale RGB values to 0 to MaxIntensity integer range:
 
     R = Adjust_and_Scale(Red,   Factor, MaxIntensity)
     G = Adjust_and_Scale(Green, Factor, MaxIntensity)
     B = Adjust_and_Scale(Blue,  Factor, MaxIntensity)
 
-
-    #- Return 3-element list value:
+    # Return 3-element list value:
 
     return [R, G, B]
 
+# ------------------------- Main:  Test Module -------------------------
+
+# Define additional examples for doctest to use:
 
 
-
-#-------------------------- Main:  Test Module -------------------------
-
-#- Define additional examples for doctest to use:
-
-__test__ = { 'Additional Example 1':
+__test__ = {'Additional Example 1':
     """
     >>> from wavelen2rgb import wavelen2rgb
     >>> waves = [450.0, 550.0, 800.0]
@@ -185,26 +173,26 @@ __test__ = { 'Additional Example 1':
     >>> rgb = [wavelen2rgb(waves[i]) for i in range(3)]
     >>> print rgb
     [[0, 28, 100], [64, 100, 0], [0, 0, 0]]
-    """ }
+    """}
 
 
-#- Execute doctest if module is run from command line:
+# Execute doctest if module is run from command line:
 
 if __name__ == "__main__":
     """Test the module.
 
-    Tests the examples in all the module documentation strings, plus 
+    Tests the examples in all the module documentation strings, plus
     __test__.
 
-    Note:  In case this is distributed as a package, we add the parent 
-    directory to to sys.path for this module testing case to enable 
+    Note:  In case this is distributed as a package, we add the parent
+    directory to to sys.path for this module testing case to enable
     doctest to work in more circumstances.
     """
-    import doctest, sys, os
-    sys.path.append(os.pardir)
-    doctest.testmod(sys.modules[__name__])
-
-
-
+    from os import pardir
+    from sys import modules
+    from sys.path import append
+    from doctest import testmod
+    append(pardir)
+    testmod(modules[__name__])
 
 # ===== end file =====
