@@ -3,10 +3,11 @@ import tkinter
 
 from fatools.lib.fautil.wavelen2rgb import wavelen2rgb
 
+
 class SimplePlot(tkinter.Canvas):
 
     def plot_channel(self, channel):
-        
+
         gram = channel.raw
         color = '#%02x%02x%02x' % tuple(wavelen2rgb(channel.wavelength))
 
@@ -14,13 +15,11 @@ class SimplePlot(tkinter.Canvas):
 
         for i in range(1, len(gram)):
             y1 = gram[i]
-            self.create_line( i-1, y0, i, y1, fill=color )
+            self.create_line(i-1, y0, i, y1, fill=color)
             y0 = y1
-        
 
 
-
-def viewer( trace ):
+def viewer(trace):
 
     root = tkinter.Tk()
 
@@ -31,14 +30,14 @@ def viewer( trace ):
     channels = trace.get_channels()
 
     for dye in channels:
-        widget.plot_channel( channels[dye] )
+        widget.plot_channel(channels[dye])
 
     widget.update()
 
     root.mainloop()
 
 
-def viewer( trace ):
+def viewer(trace):
 
     from matplotlib import pyplot as plt
 
@@ -46,6 +45,7 @@ def viewer( trace ):
 
     for dye in channels:
         c = channels[dye]
-        plt.plot( c.smooth(), color= tuple( x/255 for x in wavelen2rgb(c.wavelength)) )
+        plt.plot(c.smooth(),
+                 color=tuple(x/255 for x in wavelen2rgb(c.wavelength)))
 
     plt.show()
