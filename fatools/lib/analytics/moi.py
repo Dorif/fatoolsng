@@ -1,9 +1,7 @@
 
 import pandas
-from scipy.stats import ranksums, kruskal
+from jax.scipy.stats import ranksums, kruskal
 
-#
-#
 # Multiplicity of Infection (MoI) calculation
 # ===========================================
 #
@@ -17,8 +15,7 @@ from scipy.stats import ranksums, kruskal
 #       No of marker with allele > 1   Freq (sample)
 #       1                               30
 #       2                               5
-#
-#
+
 
 def summarize_moi(analytical_sets):
 
@@ -33,13 +30,13 @@ def summarize_moi(analytical_sets):
     stats = {}
     if len(moi_sets) == 2:
         # use Mann-Whitney / Wilxocon rank-sum (non-paired) test
-        values = [ x.sample_dist['MOI'] for x in moi_sets.values() ]
+        values = [x.sample_dist['MOI'] for x in moi_sets.values()]
         stats['test'] = 'Wilcoxon ranksum / Mann-Whitney U-test'
-        stats['stats'] = ranksums( *values )
+        stats['stats'] = ranksums(*values)
 
     elif len(moi_sets) > 2:
         # use Kruskal-Wallis
-        values = [ x.sample_dist['MOI'] for x in moi_sets.values() ]
+        values = [x.sample_dist['MOI'] for x in moi_sets.values()]
         stats['test'] = 'Kruskal-Wallis H-test'
         stats['stats'] = kruskal(*values)
 
@@ -73,7 +70,7 @@ def calculate_moi(allele_df):
     moi.med = sm.median()
     moi.max = sm.max()
     moi.N = sum(moi.histogram)
-    moi.M = moi.N - moi.histogram.get(1,0)
+    moi.M = moi.N - moi.histogram.get(1, 0)
     moi.markers = am_filter.sum()
     moi.markers.sort_values(ascending=False, inplace=True)
 
@@ -81,9 +78,9 @@ def calculate_moi(allele_df):
     moi.markers_rank = []
     marker_id_rank = []
     for (marker_id, polyclonality) in moi.markers.items():
-        marker_id_rank.append( marker_id )
-        temp_df = am_filter[marker_id_rank].apply(lambda x: 1 if any(x) else 0, axis=1)
-        moi.markers_rank.append( (marker_id, sum(temp_df)) )
+        marker_id_rank.append(marker_id)
+        temp_df = am_filter[marker_id_rank].apply(lambda x: 1 if any(x) else 0,
+                                                  axis=1)
+        moi.markers_rank.append((marker_id, sum(temp_df)))
 
     return moi
-

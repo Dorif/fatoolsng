@@ -1,9 +1,9 @@
-
-import sys, argparse
+import argparse
 
 # get the helpers
 
 from fatools.scripts.dbmgr import get_assay_list
+
 
 def init_argparser(parser=None):
 
@@ -12,11 +12,9 @@ def init_argparser(parser=None):
     else:
         p = argparse.ArgumentParser('binsutil')
 
-    p.add_argument('--sqldb', default=False,
-        help = 'SQLite3 database filename')
+    p.add_argument('--sqldb', default=False, help='SQLite3 database filename')
 
-    p.add_argument('--batch', default=False,
-        help = 'Batch code')
+    p.add_argument('--batch', default=False, help='Batch code')
 
     p.add_argument('--infile')
 
@@ -25,21 +23,21 @@ def init_argparser(parser=None):
     p.add_argument('--marker')
 
     p.add_argument('--commit', default=False, action='store_true',
-        help = 'commit to database')
+                   help='commit to database')
 
     # commands
 
     p.add_argument('--init', default=False,
-        help = 'create bins for a particular marker / batch')
+                   help='create bins for a particular marker / batch')
 
     p.add_argument('--show', default=False,
-        help = 'show bins for a particular marker / batch')
+                   help='show bins for a particular marker / batch')
 
     p.add_argument('--optimize', default=False, action='store_true',
-        help = 'optimize bins for a particular marker / batch')
+                   help='optimize bins for a particular marker / batch')
 
     p.add_argument('--summarize', default=False, action='store_true',
-        help = 'summarize data frame')
+                   help='summarize data frame')
 
     p.add_argument('--repeats', type=int)
 
@@ -50,8 +48,6 @@ def init_argparser(parser=None):
     p.add_argument('--anchor', type=int)
 
     p.add_argument('--shift', type=float, default=0)
-
-
 
     return p
 

@@ -1,15 +1,17 @@
 
-import sys, os
-import argparse
+import sys
 import importlib
+
 
 def greet():
     print('fatools - Python-based DNA fragment-analysis tools')
+
 
 def usage():
     print('Usage:')
     print('\t%s command [options]' % sys.argv[0])
     sys.exit(0)
+
 
 def main():
 
@@ -28,7 +30,4 @@ def main():
 
     parser = M.init_argparser()
     args = parser.parse_args(opt_args)
-    M.main( args )
-
-
-
+    M.main(args)

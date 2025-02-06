@@ -1,16 +1,17 @@
 from fatools.lib.analytics.export import export_demetics
-from fatools.lib.utils import cerr, cout, random_string
+# from fatools.lib.utils import cerr, cout, random_string
 from subprocess import call
 from collections import defaultdict
-import numpy as np
-import datetime, os
+# import jax.numpy as np
+import datetime
+import os
 
 
 def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
 
-    # demetics output cannot be managed as it directly writes output file to current working directory
-    # as such, we need to run demetics under a script that will change the current directory
-
+    # demetics output cannot be managed as it directly writes output file
+    # to current working directory as such, we need to run demetics under
+    # a script that will change the current directory
 
     script_file = '%s/demetics.r' % (tmp_dir)
     data_file = '%s/data.txt' % (tmp_dir)
@@ -19,18 +20,16 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
         export_demetics(analytical_sets, dbh, dataout)
 
     with open(script_file, 'w') as scriptout:
-        scriptout.write(
-            'setwd("%s")\n'
-            'library(DEMEtics)\n'
-            'dat <- read.table("%s", header=T)\n'
-            'D.Jost("dat", bias="correct", object=TRUE,format.table=FALSE,pm="pairwise", statistics="CI", bt=1000)\n'
-            % (tmp_dir, data_file)
-        )
+        scriptout.write('setwd("%s")\n'
+                        'library(DEMEtics)\n'
+                        'dat <- read.table("%s", header=T)\n'
+                        'D.Jost("dat", bias="correct", object=TRUE,format.table=FALSE,pm="pairwise", statistics="CI", bt=1000)\n'
+                        % (tmp_dir, data_file))
 
     today = datetime.date.today().strftime('%Y-%m-%d')
 
     # TODO: prepare stdout & stderr
-    ok = call( [ 'Rscript', script_file] )
+    ok = call(['Rscript', script_file])
 
     # demetics save its output to files with names AND dates...
     mean_file = "%s/dat.pairwise.Dest.mean.%s.txt" % (tmp_dir, today)
@@ -50,9 +49,10 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
 
                 cols = r.split()
                 d[cols[1]][cols[2]] = '%4.3f' % float(cols[0])
-                d[cols[2]][cols[1]] = '%6.3f - %6.3f' % ( float(cols[3]), float(cols[4]) )
+                d[cols[2]][cols[1]] = '%6.3f - %6.3f' % (float(cols[3]),
+                                                         float(cols[4]))
 
-        return dict(M=d, data_file = data_file, msg = '')
+        return dict(M=d, data_file=data_file, msg='')
 
     if os.path.exists(mean_file):
         # just use the mean file
@@ -64,14 +64,10 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
                 d[cols[1]][cols[2]] = '%4.3f' % float(cols[0])
                 d[cols[2]][cols[1]] = '-'
 
-        return dict(M=d, data_file = data_file,
-            msg = "Bootstrapping process failed."
-                  " Please download the data and run DEMEtics locally to inspect the problem."
-        )
+        return dict(M=d, data_file=data_file,
+                    msg="Bootstrapping process failed."
+                    " Please download the data and run DEMEtics locally to inspect the problem.")
 
-    return dict(M=None, data_file = data_file,
-            msg = "Problem running DEMEtics with this data set."
-                    " Please download the data and run DEMEtics locally to inspect the problem."
-    )
-
-
+    return dict(M=None, data_file=data_file,
+                msg = "Problem running DEMEtics with this data set."
+                " Please download the data and run DEMEtics locally to inspect the problem.")

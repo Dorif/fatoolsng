@@ -6,7 +6,6 @@ def init_argparser(parser=None):
     return cmds.init_argparser(parser)
 
 
-
 def main(args):
 
     from fatools.lib.fautil import cmds

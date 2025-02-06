@@ -1,5 +1,5 @@
-
-import sys, argparse, yaml, os
+import argparse
+import os
 
 from fatools.lib.utils import cout, cerr, cexit
 
@@ -9,22 +9,19 @@ def init_argparser():
     p = argparse.ArgumentParser('fautil')
 
     p.add_argument('--info', default=False, action='store_true',
-        help = 'get information on FA assay')
+                   help='get information on FA assay')
 
     p.add_argument('--view', default=False, action='store_true',
-        help = 'view information')
+                   help='view information')
 
     p.add_argument('--analyze', default=False, action='store_true',
-        help = 'analyze single FSA file')
+                   help='analyze single FSA file')
 
-    p.add_argument('--file', default=False,
-        help = 'input file')
+    p.add_argument('--file', default=False, help='input file')
 
-    p.add_argument('--sqldb', default=False,
-        help = 'Sqlite database file')
+    p.add_argument('--sqldb', default=False, help='Sqlite database file')
 
-    p.add_argument('--sizestandard', default='LIZ600',
-        help = 'Size standard')
+    p.add_argument('--sizestandard', default='LIZ600', help='Size standard')
 
     return p
 
@@ -35,7 +32,6 @@ cache_traces = {}
 def main(args):
 
     do_fautil(args)
-
 
 
 def do_fautil(args):
@@ -53,7 +49,6 @@ def do_fautil(args):
         do_analyze(args)
 
 
-
 def get_traces(args, dbh):
 
     traces = []
@@ -64,14 +59,14 @@ def get_traces(args, dbh):
         if infile is False:
             cexit('E - Please provide a filename or Sqlite database path')
 
-        abspath = os.path.abspath( args.file )
+        abspath = os.path.abspath(args.file)
 
         if abspath in cache_traces:
             traces.append((abspath, cache_traces[abspath]))
 
         else:
             from fatools.lib.fautil.traceio import read_abif_stream
-            with open( abspath, 'rb') as instream:
+            with open(abspath, 'rb') as instream:
                 t = read_abif_stream(instream)
                 cache_traces[abspath] = t
                 traces.append((abspath, t))
@@ -82,16 +77,13 @@ def get_traces(args, dbh):
     return traces
 
 
-
 def do_info(args, dbh):
-
 
     traces = get_traces(args, dbh)
 
     for abspath, trace in traces:
         cout('I - trace: %s' % abspath)
         cout('I - runtime: %s' % trace.get_run_start_time())
-
 
 
 def do_view(args, dbh):
@@ -101,8 +93,7 @@ def do_view(args, dbh):
     from fatools.lib.gui.viewer import viewer
 
     for abspath, trace in traces:
-        
-        viewer( trace )
+        viewer(trace)
 
 
 def do_analyze(args):
@@ -110,7 +101,7 @@ def do_analyze(args):
     """
 
     from fatools.lib.fautil.traceio import read_abif_stream
-    from fatools.lib.fautil.traceutils import separate_channels
+#    from fatools.lib.fautil.traceutils import separate_channels
     from fatools.lib.fsmodels.models import Assay, Marker, Panel
     from fatools.lib import params
 
@@ -120,10 +111,8 @@ def do_analyze(args):
     ladder = Marker('ladder', 10, 600, 0, None)
 
     # create dummy panel
-    dummy_panel = Panel( '-', {
-        'ladder': args.sizestandard,
-        'markers': {},
-    })
+    dummy_panel = Panel('-', {'ladder': args.sizestandard,
+                              'markers': {}, })
 
     with open(args.file, 'rb') as in_stream:
         cerr('Reading FSA file: %s' % args.file)
@@ -138,13 +127,10 @@ def do_analyze(args):
     assay.create_channels()
 
     # assign all channels
-    assay.assign_channels( panel = dummy_panel )
+    assay.assign_channels(panel=dummy_panel)
 
 
-    # scan for peaks
+# scan for peaks
     assay.scan(scanning_parameter)
 
-
-    # scan all channels
-
-
+# scan all channels

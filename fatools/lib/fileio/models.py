@@ -1,14 +1,15 @@
 # fileio/models.py
 #
-# models here are used to ensure the integrity and consistency of each inherited model
-#
+# models here are used to ensure the integrity and consistency of each
+# inherited model
 
 
-from fatools.lib.utils import cout, cerr
+from fatools.lib.utils import cerr  # , cout
 from fatools.lib.fautil.mixin2 import MarkerMixIn, PanelMixIn, ChannelMixIn, FSAMixIn, AlleleMixIn
 from fatools.lib import const
 
-import os, pickle
+import os
+import pickle
 
 
 class Marker(MarkerMixIn):
@@ -19,9 +20,8 @@ class Marker(MarkerMixIn):
 
     @classmethod
     def upload(cls, d):
-        for (k,v) in d.items():
+        for (k, v) in d.items():
             cls.container[k] = cls.from_dict(v)
-
 
     @classmethod
     def get_marker(cls, marker_code, species='x'):
@@ -38,12 +38,10 @@ class Panel(PanelMixIn):
 
     Marker = Marker
 
-
     @classmethod
     def upload(cls, d):
-        for (k,v) in d.items():
+        for (k, v) in d.items():
             cls.container[k] = cls.from_dict(v)
-
 
     @classmethod
     def get_panel(cls, panel_code):
@@ -55,7 +53,7 @@ class Allele(AlleleMixIn):
     __slots__ = []
 
     def __init__(self, rtime, rfu, area, brtime, ertime, wrtime, srtime,
-                    beta, theta, omega):
+                 beta, theta, omega):
         self.rtime = rtime
         self.rfu = rfu
         self.area = area
@@ -89,16 +87,14 @@ class Channel(ChannelMixIn):
 
         self.assign()
 
-
     def add_allele(self, allele):
         self.alleles.append(allele)
         return allele
 
 
-
 class FSA(FSAMixIn):
 
-    __slots__ = [ '_fhdl', '_trace' ]
+    __slots__ = ['_fhdl', '_trace']
 
     Channel = Channel
 
@@ -144,9 +140,11 @@ class FSA(FSAMixIn):
             fsa.create_channels()
             fsa._fhdl = None
         if cache and os.path.exists(cache_path):
-            for c in fsa.channels: c.fsa = None
+            for c in fsa.channels:
+                c.fsa = None
             with open(cache_file, 'wb') as cache_handle_write:
                 pickle.dump(fsa.channels, cache_handle_write)
-            for c in fsa.channels: c.fsa = fsa
+            for c in fsa.channels:
+                c.fsa = fsa
 
         return fsa
