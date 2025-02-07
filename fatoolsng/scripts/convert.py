@@ -2,8 +2,8 @@ import argparse
 import csv
 from collections import defaultdict
 
-from fatools.lib.utils import cerr, cexit, get_dbhandler
-from fatools.lib.fautil.traceio import read_abif_stream
+from fatoolsng.lib.utils import cerr, cexit, get_dbhandler
+from fatoolsng.lib.fautil.traceio import read_abif_stream
 
 
 def init_argparser(parser=None):
@@ -16,9 +16,9 @@ def init_argparser(parser=None):
 # commands
 
     p.add_argument('--fsa2tab', default=False, action='store_true',
-                   help='convert from FSA to tab file')
+                   help='convert from FSA to TSV')
     p.add_argument('--genemapper2tab', default=False, action='store_true',
-                   help='convert genemapper CSV file to fatools assay info tab file')
+                   help='convert genemapper CSV to fatoolsng assay info TSV')
     p.add_argument('--checkfsa', default=False, action='store_true',
                    help='check FSA files')
 
@@ -103,13 +103,13 @@ def do_genemapper2tab(args, dbh):
 
             if assay in assay_list:
                 if assay_list[assay] != run_name:
-                    cexit('Inconsistence or duplicate FSA file name: %s' % assay)
+                    cexit('Inconsistence or duplicate FSA file name: %s' %
+                          assay)
             else:
                 assay_list[assay] = run_name
 
             token = (sample, assay, panel)
             sample_set[token].append(marker)
-
 
         outfile = open(infile + '.tab', 'w')
         outfile.write('SAMPLE\tASSAY\tPANEL\tOPTIONS\n')
@@ -128,7 +128,7 @@ def do_genemapper2tab(args, dbh):
 
             excludes = s_panel_markers - s_assay_markers
             if s_assay_markers - s_panel_markers:
-                cexit('ERROR inconsistent marker(s) for sample %s assay %s: %s' % 
+                cexit('ERROR inconsistent marker(s) for sample %s assay %s: %s' %
                       (sample, assay, str(s_assay_markers-s_panel_markers)))
 
             if excludes:
@@ -159,7 +159,7 @@ def do_checkfsa(args):
             assay_file = row['ASSAY']
             panel = row['PANEL']
             if assay_file in files:
-                cerr('WARN file: %s - duplicated assay: %s for sample %s panel %s' % 
+                cerr('WARN file: %s - duplicated assay: %s for sample %s panel %s' %
                      (infile, assay_file, sample, panel))
             files[assay_file] = True
             try:

@@ -1,10 +1,10 @@
-
-
-import sys, argparse, yaml, csv, transaction
-from fatools.lib.utils import cout, cerr, cexit, get_dbhandler, set_verbosity
-from fatools.lib import params
-from fatools.lib.const import assaystatus, peaktype
-from fatools.lib.fautil import algo
+import sys
+import argparse
+import transaction
+from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler, set_verbosity
+from fatoolsng.lib import params
+from fatoolsng.lib.const import assaystatus, peaktype
+from fatoolsng.lib.fautil import algo
 
 
 def init_argparser(parser=None):
@@ -135,10 +135,26 @@ def do_facmd(args, dbh=None):
     if dbh is None:
         dbh = get_dbhandler(args)
 
-    if args.verbose != 0:
+    if args.verbose:
         set_verbosity(args.verbose)
 
     executed = 0
+    args_arr = [args.clear, args.findpeaks, args.scan, args.preannotate,
+                args.alignladder, args.call, args.bin, args.postannotate,
+                args.setallele, args.showladderpca, args.listassay,
+                args.listpeaks, args.showtrace, args.showz]
+    do_arr = [do_clear(args, dbh), do_findpeaks(args, dbh), do_scan(args, dbh),
+              do_preannotate(args, dbh), do_alignladder(args, dbh),
+              do_call(args, dbh), do_bin(args, dbh),
+              do_postannotate(args, dbh), do_setallele(args, dbh),
+              do_showladderpca(args, dbh), do_listassay(args, dbh),
+              do_listpeaks(args, dbh), do_showtrace(args, dbh),
+              do_showz(args, dbh)]
+    for i in range(14):  # 14 members in arrays above
+        if args_arr[i] is not False:
+            do_arr[i]
+            executed += 1
+        """
     if args.clear is not False:
         do_clear(args, dbh)
         executed += 1
@@ -181,10 +197,11 @@ def do_facmd(args, dbh=None):
     if args.showz is not False:
         do_showz(args, dbh)
         executed += 1
-    if executed == 0:
-        cerr('WARN - unknown command, nothing to do!')
-    else:
+        """
+    if executed:
         cerr('INFO - executed %d command(s)' % executed)
+    else:
+        cerr('WARN - unknown command, nothing to do!')
 
 
 def do_clear(args, dbh):
@@ -322,7 +339,6 @@ def do_postannotate(args, dbh):
     if args.stutter_range > 0:
         scanning_parameter.nonladder.stutter_range = args.stutter_range
 
-
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
@@ -335,7 +351,7 @@ def do_postannotate(args, dbh):
 def do_findpeaks(args, dbh):
 
     import leveldb
-    from fatools.lib import params
+    from fatoolsng.lib import params
 
     cerr('Finding and caching peaks...')
 
@@ -384,14 +400,12 @@ def do_setallele(args, dbh):
     totype = getattr(peaktype, args.totype)
 
     assay_list = get_assay_list(args, dbh)
-    counter = 1
     for (assay, sample_code) in assay_list:
         for c in assay.channels:
             if marker_ids and c.marker_id in marker_ids:
                 for allele in c.alleles:
-                    if allele.bin not in bin_values:
-                        continue
-                    if args.fromtype and allele.type != args.fromtype:
+                    if (allele.bin not in bin_values or
+                        (args.fromtype and allele.type != args.fromtype)):
                         continue
                     allele.type = totype
                     cerr('I: - setting allele %d marker %s for sample %s' %
@@ -408,14 +422,18 @@ def do_showladderpca(args, dbh):
         assay.showladderpca()
 
 
+def chk_out(outfile):
+    if outfile != '-':
+        return open(outfile, 'w')
+    else:
+        return sys.stdout
+
+
 def do_listassay(args, dbh):
 
     assay_list = get_assay_list(args, dbh)
 
-    if args.outfile != '-':
-        out_stream = open(args.outfile, 'w')
-    else:
-        out_stream = sys.stdout
+    out_stream = chk_out(args.outfile)
     for (assay, sample_code) in assay_list:
         printout_assay(assay, outfile=out_stream, fmt=args.outfmt)
 
@@ -431,11 +449,7 @@ def do_listpeaks(args, dbh):
     if markers:
         cerr('Markers: %s' % ','.join(m.code for m in markers))
 
-    if args.outfile != '-':
-        out_stream = open(args.outfile, 'w')
-    else:
-        out_stream = sys.stdout
-
+    out_stream = chk_out(args.outfile)
     out_stream.write('SAMPLE\tFILENAME\tDYE\tRTIME\tHEIGHT\tSIZE\tSCORE\tID\n')
 
     for (assay, sample_code) in assay_list:
@@ -529,8 +543,8 @@ def get_assay_list(args, dbh):
         if samples and sample.code not in samples:
             continue
         for assay in sample.assays:
-            if (assays and assay.filename not in assays) or
-               (panels and assay.panel.code not in panels):
+            if ((assays and assay.filename not in assays) or
+                (panels and assay.panel.code not in panels)):
                 continue
             assay_list.append((assay, sample.code))
 
@@ -548,7 +562,6 @@ def printout_assay(assay, outfile=sys.stdout, fmt='text'):
                        assay.score, assay.dp, assay.rss, assay.ladder_peaks,
                        len(assay.ladder.alleles), assay.method))
         return ''
-
 
     buf = []
     _ = buf.append

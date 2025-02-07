@@ -1,6 +1,10 @@
-
-import sys, argparse, yaml, csv, transaction, os
-from fatools.lib.utils import cout, cerr, cexit, get_dbhandler, tokenize
+import sys
+import argparse
+import yaml
+import csv
+import transaction
+import os
+from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler, tokenize
 
 
 def init_argparser(parser=None):
@@ -282,7 +286,8 @@ def do_importmarker(args, dbh):
 
         if 'bins_range' in marker:
             batch = dbh.get_batch('default')
-            db_m.initbins(marker['bins_range'][0], marker['bins_range'][1], batch)
+            db_m.initbins(marker['bins_range'][0], marker['bins_range'][1],
+                          batch)
             cerr('INFO: bins for marker %s has been created in batch %s'
                  % (db_m.code, batch.code))
 
@@ -341,7 +346,8 @@ def do_initsample(args, dbh):
 
     # get default location and subject first (to satisfy RDBMS constraints)
     null_location = dbh.search_location(auto=True)
-    # null_subject = dbh.search_subject('null', auto=True) # <- this shouldn't be here!!
+    # null_subject = dbh.search_subject('null', auto=True)
+    # <- this shouldn't be here!!
 
     session = dbh.session()
 
@@ -414,7 +420,8 @@ def do_uploadfsa(args, dbh):
         # if len(row) < 3:
         #    cerr('ERR - line %d only has %d item(s)' % (line_counter, len(row)))
 
-        sample_code, fsa_filename, fsa_panel = r['SAMPLE'], r['FILENAME'], r['PANEL']
+        sample_code, fsa_filename, fsa_panel = r['SAMPLE'], r['FILENAME'],
+        r['PANEL']
         if r['OPTIONS']:
             options = tokenize(r['OPTIONS'])
         else:
@@ -476,7 +483,7 @@ def do_reassignmarker(args, dbh):
 
     cerr('Reassign marker')
 
-    from fatools.lib.const import channelstatus
+    from fatoolsng.lib.const import channelstatus
 
     assay_list = get_assay_list(args, dbh)
 
@@ -515,7 +522,8 @@ def do_initbin(args, dbh):
     print(markers)
     for m in markers:
         m.initbins(start_range, end_range, batch)
-        cerr('INFO  - bin for marker %s with batch %s has been created.' % (m.label, batch.code))
+        cerr('INFO  - bin for marker %s with batch %s has been created.' %
+             (m.label, batch.code))
 
 
 def do_viewbin(args, dbh):
@@ -642,7 +650,8 @@ def do_renamefsa(args, dbh):
             continue
 
         try:
-            sample_code, fsa_filename, fsa_new_filename = r['SAMPLE'], r['FILENAME'], r['NEWNAME']
+            sample_code, fsa_filename, fsa_new_filename = r['SAMPLE'],
+            r['FILENAME'], r['NEWNAME']
             s = b.search_sample(sample_code)
             a = s.assays.filter(dbh.Assay.filename == fsa_filename).one()
             a.filename = fsa_new_filename
@@ -687,12 +696,12 @@ def do_viewpeakcachedb(args, dbh):
 
     cout('Peakcache DB: %s' % args.peakcachedb)
     for (k, v) in batches.items():
-        cout('\t%s\t%4d' % (k.decode(),v))
+        cout('\t%s\t%4d' % (k.decode(), v))
 
 
 def do_showsample(args, dbh):
 
-    from fatools.lib.const import channelstatus
+    from fatoolsng.lib.const import channelstatus
 
     batch = dbh.get_batch(args.batch)
     for code in args.sample.split(','):
@@ -771,9 +780,9 @@ def get_assay_list(args, dbh):
         if samples and sample.code not in samples:
             continue
         for assay in sample.assays:
-            if (assays and assay.filename not in assays) or
-               (fsaids and assay.id not in fsaids) or
-               (panels and assay.panel.code not in panels):
+            if ((assays and assay.filename not in assays) or
+                (fsaids and assay.id not in fsaids) or
+                (panels and assay.panel.code not in panels)):
                 continue
             assay_list.append((assay, sample.code))
 

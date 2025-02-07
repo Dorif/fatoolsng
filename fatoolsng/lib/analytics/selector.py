@@ -1,7 +1,7 @@
 import yaml
 from itertools import cycle
-from fatools.lib.analytics.sampleset import SampleSet, SampleSetContainer
-from fatools.lib.const import peaktype
+from fatoolsng.lib.analytics.sampleset import SampleSet, SampleSetContainer
+from fatoolsng.lib.const import peaktype
 
 # colour_list = [ 'r', 'g', 'b' ]
 colour_list = ['#1f78b4', '#33a02c', '#e31a1c', '#ff7f00', '#6a3d9a',
@@ -121,7 +121,9 @@ class Selector(object):
                 colours = cycle(colour_list)
 
                 for label in self.samples:
-                    sample_sets.append(SampleSet(label=label, colour=next(colours), sample_ids=self.spec_to_sample_ids(self.samples[label], dbh, sample_ids)))
+                    sample_sets.append(SampleSet(label=label,
+                                                 colour=next(colours),
+                                                 sample_ids=self.spec_to_sample_ids(self.samples[label], dbh, sample_ids)))
 
             self._sample_sets = sample_sets
 
@@ -140,9 +142,12 @@ class Filter(object):
         self.species = None
         self.abs_threshold = 0      # includes alelles above rfu
         self.rel_threshold = 0.0      # includes alleles above % of highest rfu
-        self.rel_cutoff = 0.0  # excludes alleles above % of highest rfu [rel_threshold < height < rel_cutoff]
-        self.sample_qual_threshold = 0.0  # includes samples with marker more than %
-        self.marker_qual_threshold = 0.0  # includes markers with sample more than %
+        self.rel_cutoff = 0.0
+# excludes alleles above % of highest rfu [rel_threshold < height < rel_cutoff]
+        self.sample_qual_threshold = 0.0
+        # includes samples with marker more than %
+        self.marker_qual_threshold = 0.0
+        # includes markers with sample more than %
         self.peaktype = peaktype.bin
         self.sample_options = None
         self.stutter_ratio = 0.0

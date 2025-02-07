@@ -6,9 +6,9 @@
 import argparse
 import yaml
 
-from fatools.lib.analytics.query import Query, load_yaml
-from fatools.lib.utils import cout, cerr, cexit, get_dbhandler
-from fatools.lib import params
+from fatoolsng.lib.analytics.query import Query, load_yaml
+from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler
+from fatoolsng.lib import params
 from pprint import pprint
 
 
@@ -113,7 +113,7 @@ def do_allelesummary(args, dbh):
 
 def do_binsummary(args, dbh):
 
-    from fatools.lib.analytics.summary import summarize_bins
+    from fatoolsng.lib.analytics.summary import summarize_bins
 
     scanning_parameter = params.Params()
 
@@ -160,7 +160,7 @@ def do_binsummary(args, dbh):
 
 def do_export(args, dbh):
 
-    from fatools.lib.analytics.export import export
+    from fatoolsng.lib.analytics.export import export
 
     query = get_query(args, dbh)
     analytical_sets = query.get_filtered_analytical_sets()
@@ -191,7 +191,6 @@ def get_sample_sets(args, dbh):
 
 
 def get_analytical_sets(args, dbh):
-
 
     query = load_yaml(open(args.yamlquery).read())
     sample_sets = query['selector'].get_sample_sets(dbh)

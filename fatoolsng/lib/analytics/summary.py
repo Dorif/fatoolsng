@@ -119,7 +119,8 @@ def summarize_bins(analytical_sets):
 
     # collect items (sizes) for each marker
     for label in allele_summaries:
-        for (marker_id, allele_summary) in allele_summaries[label]['summary'].items():
+        for (marker_id,
+             allele_summary) in allele_summaries[label]['summary'].items():
             pprint(allele_summary)
             for allele_params in allele_summary['alleles']:
                 bin_value = allele_params[0]
@@ -148,8 +149,8 @@ def summarize_bins(analytical_sets):
 def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
 
     from matplotlib import pyplot as plt
-    from matplotlib.figure import Figure
-    from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+#    from matplotlib.figure import Figure
+#    from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
     from matplotlib.ticker import MultipleLocator
 
     marker_ids = set()
@@ -232,7 +233,7 @@ def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
                   colors=[allele_report['colour']],
                   label=label)
     leg = lx.legend(ncol=len(allele_reports), prop={'size': 18})
-        # lx.set_ylabel('Legend')
+    # lx.set_ylabel('Legend')
     lx.set_axis_off()
 
     fig.tight_layout()

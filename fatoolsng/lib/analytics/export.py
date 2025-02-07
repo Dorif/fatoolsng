@@ -68,7 +68,7 @@ def export_alleledf(analytical_sets, dbh, outstream):
         into R or Python's pandas
     """
 
-    # format: LABEL SAMPLE MARKER ALLELE SIZE HEIGHT AREA BETA THETA SYM SCORE TYPE
+# format: LABEL SAMPLE MARKER ALLELE SIZE HEIGHT AREA BETA THETA SYM SCORE TYPE
 
     outstream.write('LABEL\tMARKER\tSAMPLE\tBIN\tSIZE\tHEIGHT\tRATIO\tRANK\n')
 
@@ -90,7 +90,7 @@ def export_moidf(analytical_sets, dbh, outstream):
         R or Python's pandas
     """
 
-    from fatools.lib.analytics.moi import calculate_moi
+    from fatoolsng.lib.analytics.moi import calculate_moi
 
     # format: LABEL SAMPLE MOI MLOCI
 

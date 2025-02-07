@@ -77,7 +77,7 @@ def mca(distance_matrix, dim=2):
 
     # build up haplotype dataframe
 
-    from fatools.lib.utils import acquire_R, release_R
+    from fatoolsng.lib.utils import acquire_R, release_R
     from rpy2 import robjects
     from rpy2.robjects import pandas2ri
 
@@ -104,11 +104,12 @@ def pca(distance_matrix, dim=2):
     """ calculate PCA matrix using in-house algorithm, treating variables
         as categorical data
     """
+    from pandas import get_dummies
 
     D = {}
 
     for c in distance_matrix.H.columns:
-        D[c] = pandas.get_dummies(distance_matrix.H[c])
+        D[c] = get_dummies(distance_matrix.H[c])
 
     # H = pandas.concat()
 
@@ -123,6 +124,7 @@ def format_data(pca_res, dm):
     d = [('SAMPLE', 'LABEL') + tuple('PC%d' % (x+1) for x in range(dim))]
 
     for i in range(len(dm.I)):
-        d.append((str(dm.I[i]), dm.L[i]) + tuple('%5.4f' % x for x in pca_res[0][i]))
+        d.append((str(dm.I[i]), dm.L[i]) + tuple('%5.4f' % x for x in
+                                                 pca_res[0][i]))
 
     return d

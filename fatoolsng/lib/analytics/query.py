@@ -1,9 +1,8 @@
-
 import yaml
-from fatools.lib.utils import cerr  # , cout
-from fatools.lib.analytics.selector import Selector, Filter
-from fatools.lib.analytics.analyticalset import get_analytical_sets
-from fatools.lib.analytics.haploset import get_haplotype_sets
+from fatoolsng.lib.utils import cerr  # , cout
+from fatoolsng.lib.analytics.selector import Selector, Filter
+from fatoolsng.lib.analytics.analyticalset import get_analytical_sets
+from fatoolsng.lib.analytics.haploset import get_haplotype_sets
 from pandas import DataFrame
 
 
@@ -57,7 +56,8 @@ class Query(object):
             sample_sets = self.get_sample_sets(sample_ids)
             self._analytical_sets = get_analytical_sets(self._dbh, sample_sets,
                                                         self._params['filter'])
-            cerr('[query]: initial total samples: %d' % self._analytical_sets.total_samples)
+            cerr('[query]: initial total samples: %d' %
+                 self._analytical_sets.total_samples)
         return self._analytical_sets
 
     def get_filtered_sample_sets(self, sample_ids=None):
@@ -86,7 +86,7 @@ class Query(object):
             cerr('[query]: filtered marker ids: %s' % str(filtered_marker_ids))
 
             # filter markers by retaining marker ids and removing others
-            filtered_analytical_sets = get_analytical_sets(self._dbh, filtered_sample_sets, self._params['filter'], marker_ids = filtered_marker_ids)
+            filtered_analytical_sets = get_analytical_sets(self._dbh, filtered_sample_sets, self._params['filter'], marker_ids=filtered_marker_ids)
 
             self._filtered_analytical_sets = filtered_analytical_sets
 

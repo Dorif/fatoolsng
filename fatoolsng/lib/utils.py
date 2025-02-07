@@ -1,7 +1,7 @@
 import sys
 import base64
 import os
-import math
+from math import ceil
 
 
 def cout(s, nl=True, flush=False):
@@ -85,7 +85,7 @@ def tokenize(options, converter=None):
     return opt_dict
 
 
-random_string = lambda n: base64.b64encode(os.urandom(int(math.ceil(0.75*n))),
+random_string = lambda n: base64.b64encode(os.urandom(int(ceil(0.75*n))),
                                            b'-_')[:n].decode('UTF-8')
 
 

@@ -1,6 +1,6 @@
 
-from fatools.lib.analytics.export import export_arlequin
-from fatools.lib.utils import cerr  # , cout
+from fatoolsng.lib.analytics.export import export_arlequin
+from fatoolsng.lib.utils import cerr  # , cout
 from subprocess import call
 from jax.numpy import nan
 

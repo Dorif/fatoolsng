@@ -1,4 +1,4 @@
-from fatools.lib.analytics.export import export_demetics
+from fatoolsng.lib.analytics.export import export_demetics
 # from fatools.lib.utils import cerr, cout, random_string
 from subprocess import call
 from collections import defaultdict
@@ -69,5 +69,5 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
                     " Please download the data and run DEMEtics locally to inspect the problem.")
 
     return dict(M=None, data_file=data_file,
-                msg = "Problem running DEMEtics with this data set."
+                msg="Problem running DEMEtics with this data set."
                 " Please download the data and run DEMEtics locally to inspect the problem.")

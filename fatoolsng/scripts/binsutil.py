@@ -2,7 +2,7 @@ import argparse
 
 # get the helpers
 
-from fatools.scripts.dbmgr import get_assay_list
+# from fatoolsng.scripts.dbmgr import get_assay_list
 
 
 def init_argparser(parser=None):
@@ -58,5 +58,5 @@ def main(args):
 
 
 def do_binsutil(args, dbh=None):
-    from fatools.lib.fautil import binsutil
+    from fatoolsng.lib.fautil import binsutil
     binsutil.do_binsutil(args)

@@ -1,5 +1,5 @@
 # from fatools.lib.utils import cout, cerr
-from fatools.lib.analytics.export import export_flat
+from fatoolsng.lib.analytics.export import export_flat
 from subprocess import Popen, PIPE
 
 

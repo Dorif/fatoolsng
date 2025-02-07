@@ -4,7 +4,7 @@ import importlib
 
 
 def greet():
-    print('fatools - Python-based DNA fragment-analysis tools')
+    print('fatoolsng - Python-based DNA fragment-analysis tools')
 
 
 def usage():
@@ -23,7 +23,7 @@ def main():
     print('Running command: %s' % command)
 
     try:
-        M = importlib.import_module('fatools.scripts.' + command)
+        M = importlib.import_module('fatoolsng.scripts.' + command)
     except ImportError:
         print('Cannot import script name: %s' % command)
         raise

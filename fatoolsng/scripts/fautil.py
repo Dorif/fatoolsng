@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from fatools.lib.utils import cout, cerr, cexit
+from fatoolsng.lib.utils import cout, cerr, cexit
 
 
 def init_argparser():
@@ -65,7 +65,7 @@ def get_traces(args, dbh):
             traces.append((abspath, cache_traces[abspath]))
 
         else:
-            from fatools.lib.fautil.traceio import read_abif_stream
+            from fatoolsng.lib.fautil.traceio import read_abif_stream
             with open(abspath, 'rb') as instream:
                 t = read_abif_stream(instream)
                 cache_traces[abspath] = t
@@ -90,7 +90,7 @@ def do_view(args, dbh):
 
     traces = get_traces(args, dbh)
 
-    from fatools.lib.gui.viewer import viewer
+    from fatoolsng.lib.gui.viewer import viewer
 
     for abspath, trace in traces:
         viewer(trace)
@@ -100,10 +100,10 @@ def do_analyze(args):
     """ open a tracefile, performs fragment analysis (scan & call only)
     """
 
-    from fatools.lib.fautil.traceio import read_abif_stream
-#    from fatools.lib.fautil.traceutils import separate_channels
-    from fatools.lib.fsmodels.models import Assay, Marker, Panel
-    from fatools.lib import params
+    from fatoolsng.lib.fautil.traceio import read_abif_stream
+#    from fatoolsng.lib.fautil.traceutils import separate_channels
+    from fatoolsng.lib.fsmodels.models import Assay, Marker, Panel
+    from fatoolsng.lib import params
 
     scanning_parameter = params.Params()
 

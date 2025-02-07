@@ -42,7 +42,8 @@ def plot_nj(distance_matrix, tmp_dir, fmt='pdf', label_callback=None,
         label_cmd = ("L<-read.table('%s',sep='\\t',header=F);"
                      "L[[1]]<-as.character(L[[1]]);"
                      "L[[2]]<-as.character(L[[2]]);"
-                     "tree$tip.label<-L[[2]][tree$tip.label == L[[1]]]" % label_file)
+                     "tree$tip.label<-L[[2]][tree$tip.label == L[[1]]]" %
+                     label_file)
     else:
         label_cmd = ''
 
