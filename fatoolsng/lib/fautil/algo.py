@@ -1,22 +1,19 @@
-
-from jax.numpy import median, percentile, mean, sum, poly1d, polyfit, sort
+from numpy import poly1d
+from jax.numpy import median, percentile, mean, sum, polyfit, sort
 from math import log, log2
-
-from jax.scipy.signal import find_peaks_cwt
-# from jax.scipy.optimize import curve_fit, leastsq
-from jax.scipy.interpolate import UnivariateSpline
-
-from fatools.lib.const import peaktype, binningmethod, allelemethod
-# from fatools.lib.fautil.dpalign import estimate_z, align_peaks, plot_z
-from fatools.lib.utils import cerr, cverr  # , cout
-
-import fatools.lib.fautil.peakalign as pa
+from scipy.signal import find_peaks_cwt
+# from scipy.optimize import curve_fit, leastsq
+from scipy.interpolate import UnivariateSpline
+from fatoolsng.lib.const import peaktype, binningmethod, allelemethod
+# from fatoolsng.lib.fautil.dpalign import estimate_z, align_peaks, plot_z
+from fatoolsng.lib.utils import cerr, cverr  # , cout
+import fatoolsng.lib.fautil.peakalign as pa
 
 from sortedcontainers import SortedListWithKey
 
 import pickle  # , pprint
 # from matplotlib import pylab as plt
-from bisect import bisect_left
+# from bisect import bisect_left
 
 
 def find_raw_peaks(raw_data, params):
@@ -169,12 +166,14 @@ def find_peaks(raw_data,  params, raw_peaks=None):
 
         if idx > 0:
             prev_p = peaks[idx-1]
-            if peak[3]-prev_p[4] < 5 and peak[1] < params.artifact_ratio*prev_p[1]:
+            if (peak[3]-prev_p[4] < 5 and
+                peak[1] < params.artifact_ratio*prev_p[1]):
                 # we are artifact, just skip
                 continue
         if idx < len(peaks)-1:
             next_p = peaks[idx+1]
-            if next_p[3]-peak[4] < 5 and peak[1] < params.artifact_ratio*next_p[1]:
+            if (next_p[3]-peak[4] < 5 and
+                peak[1] < params.artifact_ratio*next_p[1]):
                 # we are another artifact, just skip
                 continue
 
@@ -243,7 +242,8 @@ def scan_peaks(channel, params, peakdb):
         if len(peaks) > 1.5 * params.expected_peak_number:
             # try to remove peaks further
             saved_peaks = peaks
-            while len(peaks)-len(saved_peaks) < 0.30*len(peaks) and height_threshold < 20:
+            while (len(peaks)-len(saved_peaks) < 0.30*len(peaks) and
+                   height_threshold < 20):
                 height_threshold += 1
                 saved_peaks = [q for q in saved_peaks
                                if q[0] > height_threshold]
@@ -321,7 +321,8 @@ def preannotate_channels(channels, params):
                 p.type = peaktype.noise
                 continue
 
-            if p.wrtime < 6 or (p.wrtime < 10 and peak_beta_theta < 0.275*avg_beta_theta):
+            if p.wrtime < 6 or (p.wrtime < 10 and
+                                peak_beta_theta < 0.275*avg_beta_theta):
                 p.qscore = 0.25
                 p.type = peaktype.noise
                 continue
@@ -330,7 +331,8 @@ def preannotate_channels(channels, params):
 
             if peak_beta_theta < avg_beta_theta/3:
                 halfheight = p.height/2
-                if (p.channel.data[p.brtime] > halfheight or p.channel.data[p.ertime] > halfheight):
+                if (p.channel.data[p.brtime] > halfheight or
+                    p.channel.data[p.ertime] > halfheight):
                     p.qscore = 0.25
                     p.type = peaktype.noise
                     continue
@@ -404,7 +406,7 @@ def preannotate_channels(channels, params):
                     channel.data[ertime] < channel_r.data[ertime] and
                     p.height < channel_r.data[p.rtime]):
 
-                    # check how much is the relative height of this particular peak
+# check how much is the relative height of this particular peak
                     rel_height = p.height / channel_r.data[p.rtime]
                     if rel_height > 1.0:
                         continue
@@ -583,7 +585,7 @@ def postannotate_peaks(channel, params):
             if (abs(prev_allele.size - allele.size) < params.stutter_range and
                     allele.height/prev_allele.height < params.stutter_ratio):
                 allele.type = peaktype.stutter
-            elif (abs(prev_allele.size-allele.size) < (params.stutter_range/2+1)):
+            elif (abs(prev_allele.size-allele.size) < params.stutter_range/2+1):
                 allele.type = peaktype.stutter
             elif prev_allele.bin == allele.bin:
                 allele.type = peaktype.stutter
@@ -746,7 +748,7 @@ def generate_scoring_function(strict_params, relax_params):
                 dp_rss_part = 1e-2 ** (1e-3 * delta_rss)
                 msg.append('RSS > %d' % (relax_params['max_rss']))
 
-            # score based on how many peaks we might miss compared to minimum number of peaks
+# score based on how many peaks we might miss compared to minimum number of peaks
             delta_peaks = relax_params['min_sizes'] - len(dp_peaks)
             if delta_peaks <= 0:
                 dp_peaks_part = 1

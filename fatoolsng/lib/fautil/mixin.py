@@ -1,14 +1,15 @@
 
-from fatools.lib.fautil import traceio, traceutils
-from fatools.lib.utils import cerr  # , cout
-from fatools.lib.const import (peaktype, channelstatus, assaystatus, dyes,
-                               ladders, allelemethod, alignmethod,
-                               binningmethod, scanningmethod)
-from fatools.lib.fautil import algo
+from fatoolsng.lib.fautil import traceio, traceutils
+from fatoolsng.lib.utils import cerr  # , cout
+from fatoolsng.lib.const import (peaktype, channelstatus, assaystatus, dyes,
+                                 ladders, allelemethod, alignmethod,
+                                 binningmethod, scanningmethod)
+from fatoolsng.lib.fautil import algo
 from sortedcontainers import SortedListWithKey
 
 import io
-from jax.numpy import zeros, poly1d
+from numpy import poly1d
+from jax.numpy import zeros
 from copy import copy
 from functools import lru_cache
 import pprint
@@ -165,7 +166,7 @@ class BatchMixIn(object):
         raise NotImplementedError('PROG/ERR - child class must override this method')
 
 
-    def get_marker(self, marker_code, species_code = None):
+    def get_marker(self, marker_code, species_code=None):
         # shortcut to get single Marker instance, otherwise throws exception
         raise NotImplementedError('PROG/ERR - child class must override this method')
 
@@ -453,7 +454,6 @@ class ChannelMixIn(object):
 
     def showladderpca(self):
 
-        import mdp
         from matplotlib import pylab as plt
         import math
 
@@ -473,7 +473,7 @@ class ChannelMixIn(object):
         D = zeros((len(y), len(x)))
         for i in range(len(y)):
             for j in range(len(x)):
-                D[i,j] = math.exp(((x[j]-y[i])/1000)**2)
+                D[i, j] = math.exp(((x[j]-y[i])/1000)**2)
 
         pprint.pprint(D)
         im = plt.imshow(D, interpolation='nearest', cmap='Reds')
@@ -580,7 +580,7 @@ class AssayMixIn(object):
 
     def create_channels(self):
         """ create new channel based on current trace """
-        # t = traceio.read_abif_stream( io.BytesIO( self.raw_data ) )
+        # t = traceio.read_abif_stream(io.BytesIO( self.raw_data))
         t = self.get_trace()
 
         channels = traceutils.separate_channels(t)
@@ -629,7 +629,8 @@ class AssayMixIn(object):
                 cerr('%s => Unused; ' % channel.dye, nl=False)
                 continue
 
-            if excluded_markers is not None and marker.label.upper() in excluded_markers:
+            if (excluded_markers is not None and
+                marker.label.upper() in excluded_markers):
                 channel.status = channelstatus.unassigned
                 excluded.append(marker.label.upper())
                 cerr('%s => Unassigned; ' % channel.dye, nl=False)

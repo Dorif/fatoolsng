@@ -16,7 +16,8 @@
 # Modification History:
 # - 4 Dec 2003:  Original by Johnny Lin, Computation Institute,
 #   University of Chicago.  Passed passably reasonable tests.
-#
+# - 9 Jan 2025: Modified by Alexandr Dorif to make it a bit faster
+#   and run correct with Python 3.
 # Notes:
 # - Written for Python 2.2.
 # - Module docstrings can be tested using the doctest module.  To
@@ -26,6 +27,20 @@
 # Copyright (c) 2003 by Johnny Lin.  For licensing, distribution
 # conditions, contact information, and additional documentation see
 # the URL http://www.johnny-lin.com/pylib.html.
+#
+# This library is free software; you can redistribute it and/or modify it
+# under the terms of the GNU Lesser General Public License as published
+# by the Free Software Foundation; either version 2.1 of the License,
+# or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this library; if not, write to the Free Software Foundation, Inc.,
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
 # ======================================================================
 
 # ------------------- Overall Function Declaration ---------------------
@@ -58,7 +73,7 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
     >>> from wavelen2rgb import wavelen2rgb
     >>> waves = [300.0, 400.0, 600.0]
     >>> rgb = [wavelen2rgb(waves[i], MaxIntensity=255) for i in range(3)]
-    >>> print rgb
+    >>> print(rgb)
     [[0, 0, 0], [131, 0, 181], [255, 190, 0]]
     """
 
@@ -102,32 +117,32 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
     # Set RGB values (normalized in range 0 to 1) depending on
     #  heuristic wavelength intervals:
 
-    if (Wavelength >= 380.0) and (Wavelength < 440.0):
-        Red = -(Wavelength - 440.) / (440. - 380.)
+    if 440 > Wavelength >= 380:
+        Red = -(Wavelength-440)/60  # 60 = 440 - 380
         Green = 0.0
         Blue = 1.0
 
-    elif (Wavelength >= 440.0) and (Wavelength < 490.0):
+    elif 490 > Wavelength >= 440:
         Red = 0.0
-        Green = (Wavelength - 440.) / (490. - 440.)
+        Green = (Wavelength-440)/50  # 50 = 490 - 440
         Blue = 1.0
 
-    elif (Wavelength >= 490.0) and (Wavelength < 510.0):
+    elif 510 > Wavelength >= 490:
         Red = 0.0
         Green = 1.0
-        Blue = -(Wavelength - 510.) / (510. - 490.)
+        Blue = -(Wavelength-510)/20  # 20 = 510 - 490
 
-    elif (Wavelength >= 510.0) and (Wavelength < 580.0):
-        Red = (Wavelength - 510.) / (580. - 510.)
+    elif 580 > Wavelength >= 510:
+        Red = (Wavelength-510)/70  # 70 = 580 - 510
         Green = 1.0
         Blue = 0.0
 
-    elif (Wavelength >= 580.0) and (Wavelength < 645.0):
+    elif 645 > Wavelength >= 580:
         Red = 1.0
-        Green = -(Wavelength - 645.) / (645. - 580.)
+        Green = -(Wavelength-645)/65  # 65 = 645 - 580
         Blue = 0.0
 
-    elif (Wavelength >= 645.0) and (Wavelength <= 780.0):
+    elif 780 >= Wavelength >= 645:
         Red = 1.0
         Green = 0.0
         Blue = 0.0
@@ -139,12 +154,12 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
 
     # Let the intensity fall off near the vision limits:
 
-    if (Wavelength >= 380.0) and (Wavelength < 420.0):
-        Factor = 0.3 + 0.7*(Wavelength - 380.) / (420. - 380.)
-    elif (Wavelength >= 420.0) and (Wavelength < 701.0):
+    if 420 > Wavelength >= 380:
+        Factor = 0.3 + 0.7*(Wavelength-380)/40  # 40 = 420 - 380
+    elif 701 > Wavelength >= 420:
         Factor = 1.0
-    elif (Wavelength >= 701.0) and (Wavelength <= 780.0):
-        Factor = 0.3 + 0.7*(780. - Wavelength) / (780. - 700.)
+    elif 780 >= Wavelength >= 701:
+        Factor = 0.3 + 0.7*(780-Wavelength)/80  # 80 = 780 - 700
     else:
         Factor = 0.0
 
@@ -164,16 +179,16 @@ def wavelen2rgb(Wavelength, MaxIntensity=100):
 
 
 __test__ = {'Additional Example 1':
-    """
-    >>> from wavelen2rgb import wavelen2rgb
-    >>> waves = [450.0, 550.0, 800.0]
-    >>> rgb = [wavelen2rgb(waves[i], MaxIntensity=255) for i in range(3)]
-    >>> print rgb
-    [[0, 70, 255], [163, 255, 0], [0, 0, 0]]
-    >>> rgb = [wavelen2rgb(waves[i]) for i in range(3)]
-    >>> print rgb
-    [[0, 28, 100], [64, 100, 0], [0, 0, 0]]
-    """}
+            """
+            >>> from wavelen2rgb import wavelen2rgb
+            >>> waves = [450.0, 550.0, 800.0]
+            >>> rgb = [wavelen2rgb(wave, MaxIntensity=255) for wave in waves]
+            >>> print(rgb)
+            [[0, 70, 255], [163, 255, 0], [0, 0, 0]]
+            >>> rgb = [wavelen2rgb(wave) for wave in waves]
+            >>> print(rgb)
+            [[0, 28, 100], [64, 100, 0], [0, 0, 0]]
+            """}
 
 
 # Execute doctest if module is run from command line:
@@ -190,9 +205,9 @@ if __name__ == "__main__":
     """
     from os import pardir
     from sys import modules
-    from sys.path import append
+    from sys import path
     from doctest import testmod
-    append(pardir)
+    path.append(pardir)
     testmod(modules[__name__])
 
 # ===== end file =====

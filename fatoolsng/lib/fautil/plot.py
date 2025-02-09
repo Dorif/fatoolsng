@@ -2,13 +2,11 @@
 Collection of functions to do assay plotting using matplotlib.
 """
 from os.path import splitext
-
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-
-from fatools.lib import params
-from fatools.lib.utils import cerr, cexit
-from fatools.lib.fautil.wavelen2rgb import wavelen2rgb
+from fatoolsng.lib import params
+from fatoolsng.lib.utils import cerr, cexit
+from fatoolsng.lib.fautil.wavelen2rgb import wavelen2rgb
 
 
 def align_fsa(fsa):

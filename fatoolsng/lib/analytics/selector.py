@@ -3,7 +3,6 @@ from itertools import cycle
 from fatoolsng.lib.analytics.sampleset import SampleSet, SampleSetContainer
 from fatoolsng.lib.const import peaktype
 
-# colour_list = [ 'r', 'g', 'b' ]
 colour_list = ['#1f78b4', '#33a02c', '#e31a1c', '#ff7f00', '#6a3d9a',
                '#b15928', '#a6cee3', '#b2df8a', '#fb9a99', '#fdbf6f',
                '#cab2d6', '#ffff99']
@@ -45,39 +44,27 @@ class Selector(object):
         pass
 
     def spec_to_sample_ids(self, spec_list, dbh, sample_ids=None):
-
         global_ids = set()
         for spec in spec_list:
-
             # initial spec
             ids = set()
-
             if 'query' in spec:
-
                 if '$' in spec['query']:
                     raise RuntimeError('cannot process differentiating query')
-
                 if 'batch' in spec:
                     query = spec['batch'] + '[batch] & (' + spec['query'] + ')'
-
                 ids.update(query2set(parse_querycmd(query)))
-
             elif 'codes' in spec:
-
                 batch = dbh.get_batch(spec['batch'])
                 ids.update(set(batch.get_sample_ids_by_codes(spec['codes'])))
-
             elif 'ids' in spec:
                 ids.update(set(spec['ids']))
-
             elif 'batch' in spec:
                 batch = dbh.get_batch(spec['batch'])
                 ids.update(batch.sample_ids)
-
             elif 'batch_id' in spec:
                 batch = dbh.get_batch_by_id(spec['batch_id'])
                 ids.update(batch.sample_ids)
-
             else:
                 raise RuntimeError( 'sample spec format is incorrect, mandatory fields must exist!')
 

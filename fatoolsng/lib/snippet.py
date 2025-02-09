@@ -1,5 +1,6 @@
 import pprint
-from jax.numpy import poly1d, linspace, zeros, exp
+from numpy import poly1d
+from jax.numpy import linspace, zeros, exp
 
 
 def adaptive_align_naive(trace, peaks, avg_height, ladders):
@@ -112,7 +113,7 @@ def adaptive_align_naive_2(trace, peaks, avg_height, ladders):
             # estimate initial Z based on peak_assignment
 
             peak_pairs.sort()
-            z, rss = estimate_z(* zip(*peak_pairs))
+            z, rss = estimate_z(*zip(*peak_pairs))
             pprint.pprint(peak_pairs)
 
             # iterate using Dynamic Programming to get best RSS and DP score
@@ -469,7 +470,6 @@ def search_peak_index(idx, peak_list):
 
 def adaptive_peak_alignment(peak_assignment, peaks, ladders):
     """ return dpscore, rss, z, aligned_peaks """
-
     # estimate initial Z based on peak_assignment
     peak_pairs = []
     pprint.pprint(peak_assignment)
@@ -479,34 +479,25 @@ def adaptive_peak_alignment(peak_assignment, peaks, ladders):
         peak_pairs.append((rtime, val[0]))
     peak_pairs.sort()
     z, rss = estimate_z(*zip(*peak_pairs))
-
     # iterate using Dynamic Programming to get best RSS and DP score
     dp_score, dp_rss, dp_z, dp_peaks, S, D = align_peaks(ladders, peaks, z,
                                                          rss)
-
     pprint.pprint(dp_peaks)
-
     for (std_size, peak) in dp_peaks:
         peak.size = std_size
         peak.type = peaktype.ladder
-
     return dp_score, dp_rss, dp_z, dp_peaks
 
 
 def estimate_peak_pairs(peaks, ladders, z):
-
     # generate synthetic standard peaks
     standard_peaks = []
     f = poly1d(z)
     for ladder in ladders:
         standard_peaks.append((f(ladder), ladder))
-
     # pprint.pprint(standard_peaks)
-
     # align peaks, must be done twice
-
     peak_pairs = []
-
     for (rtime, ladder) in standard_peaks:
         min_cost = abs(rtime - peaks[0].rtime)
         aln_peak = peaks[0]
@@ -516,19 +507,15 @@ def estimate_peak_pairs(peaks, ladders, z):
                 min_cost = c
                 aln_peak = p
         peak_pairs.append((aln_peak.rtime, ladder))
-
     return peak_pairs
 
 
 # FUNCTIONS BELOW ARE USEFUL FOR ALGORITHM DEBUGGING
 
 def plot_path(standard_peaks, data, path, peaks):
-
     from matplotlib import pylab as plt
-
     plt.plot(data, 'r')
     plt.plot(standard_peaks, 'y')
-
     # print(path)
     # rtimes = [x.rtime for x in peaks]
     for [map_x, map_y] in zip(path[0], path[1]):
@@ -538,15 +525,11 @@ def plot_path(standard_peaks, data, path, peaks):
 
 
 def simple_pca(a1):
-
     M = zeros((len(a1), len(a1)))
-
     for i in range(len(a1)):
         for j in range(i, len(a1)):
             M[i, j] = M[j, i] = (a1[i]-a1[j]) ** 2
-
     import mdp
-
     return mdp.pca(M, output_dim=2)
 
 
@@ -566,5 +549,4 @@ def plot_pca(comps, labels):
                      arrowprops=dict(arrowstyle='->',
                                      connectionstyle='arc3,rad=0'))
         ytext = ytext * -1
-
     plt.show()

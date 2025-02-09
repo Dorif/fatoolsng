@@ -1,11 +1,13 @@
 
 from jax.numpy import poly1d
-from scipy.optimize import minimize, differential_evolution
-
-from fatools.lib.utils import cerr
-from fatools.lib import const
-from fatools.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
-            pair_sized_peaks, DPResult, AlignResult, generate_similarity, plot)
+from jax.scipy.optimize import minimize
+from scipy.optimize import differential_evolution
+from fatoolsng.lib.utils import cerr
+from fatoolsng.lib import const
+from fatoolsng.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
+                                             pair_sized_peaks, DPResult,
+                                             AlignResult, generate_similarity,
+                                             plot)
 
 
 class ZFunc(object):
@@ -39,9 +41,8 @@ class ZFunc(object):
     def get_initial_z(self):
         # return (initial_z, initial_rss) based on anchor pairs
         # check which order we want to use for initial Z
-        if ((self.anchor_sizes[-1] - self.anchor_sizes[0]) >
-            0.2 * (self.sizes[-1] - self.sizes[0])
-            and len(self.anchor_pairs) >= 5):
+        if (((self.anchor_sizes[-1]-self.anchor_sizes[0]) >
+            (self.sizes[-1]-self.sizes[0])/5) and len(self.anchor_pairs) >= 5):
             orders = [1, 2]
         else:
             orders = [1]
@@ -195,7 +196,8 @@ def align_sh(peaks, ladder):
                      else const.alignmethod.sh_relax)
     return result
 
-def align_de( peaks, ladder, initial_pair=[] ):
+
+def align_de(peaks, ladder, initial_pair=[]):
     """ differential evolution method
     """
 

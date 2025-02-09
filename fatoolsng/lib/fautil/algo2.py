@@ -1,17 +1,18 @@
-from jax.numpy import poly1d, polyfit, linspace, repeat  # , exp
+from jax.numpy import polyfit, linspace, repeat
+from numpy import poly1d  # , exp
 from jax.numpy import sum, append, insert, maximum, array, percentile
 from math import log2
 
-from fatools.lib.utils import cerr, cverr, is_verbosity
-from fatools.lib import const
-from fatools.lib.fautil.hcalign import align_hc
-from fatools.lib.fautil.gmalign import align_gm, align_sh, align_de
-from fatools.lib.fautil.pmalign import align_pm
+from fatoolsng.lib.utils import cerr, cverr, is_verbosity
+from fatoolsng.lib import const
+from fatoolsng.lib.fautil.hcalign import align_hc
+from fatoolsng.lib.fautil.gmalign import align_gm, align_sh, align_de
+from fatoolsng.lib.fautil.pmalign import align_pm
+from fatoolsng.lib.fautil.traceio import WAVELENGTH
 
-
-from jax.scipy.ndimage import white_tophat
-from jax.scipy.signal import medfilt, savgol_filter
-from jax.scipy.optimize import curve_fit
+from scipy.ndimage import white_tophat
+from scipy.signal import medfilt, savgol_filter
+from scipy.optimize import curve_fit
 from peakutils import indexes
 from matplotlib import pyplot as plt
 from sortedcontainers import SortedListWithKey
@@ -48,7 +49,6 @@ class Channel(object):
     alleles = attr.ib(default=list)
 
     fsa = attr.ib(default=None)
-
 
     def scan(self, params, offset=0):
 
@@ -163,7 +163,6 @@ def align_ladder(alleles, ladder, anchor_pairs):
     return align_de(alleles, ladder)
 
     raise RuntimeError
-
 
     result = hclust_align(alleles, ladder)
 
@@ -585,8 +584,6 @@ def b(txt):
     """ return a binary string aka bytes """
     return txt.encode('UTF-8')
 
-from fatools.lib.fautil.traceio import WAVELENGTH
-
 
 def separate_channels(trace):
     # return a list of ['dye name', dye_wavelength, numpy_array,
@@ -661,7 +658,8 @@ def generate_scoring_function(strict_params, relax_params):
             if delta_peaks <= 0:
                 dp_peaks_part = 1
             else:
-                dp_peaks_part = max(0, -2*delta_peaks*relax_params['min_sizes']-1)
+                dp_peaks_part = max(0,
+                                    -2*delta_peaks*relax_params['min_sizes']-1)
                 msg.append('Missing peaks = %d' % delta_peaks)
 
             # total overall score
@@ -676,7 +674,8 @@ def generate_scoring_function(strict_params, relax_params):
 def local_southern(ladder_alleles):
     """ southern local interpolation """
 
-    ladder_allele_sorted = SortedListWithKey(ladder_alleles, key=lambda k: k.rtime)
+    ladder_allele_sorted = SortedListWithKey(ladder_alleles,
+                                             key=lambda k: k.rtime)
     x = [p.rtime for p in ladder_allele_sorted]
     y = [p.size for p in ladder_allele_sorted]
 
@@ -697,7 +696,7 @@ def local_southern(ladder_alleles):
         size2 = poly1d(z2)(rtime)
         min_score2 = min(x.qscore for x in ladder_allele_sorted[idx-1:idx+2])
 
-        return ((size1 + size2)/2, (size1 - size2) ** 2, (min_score1 + min_score2)/2,
+        return ((size1+size2)/2, (size1 - size2)**2, (min_score1+min_score2)/2,
                 const.allelemethod.localsouthern)
 
     return _f

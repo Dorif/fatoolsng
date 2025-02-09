@@ -2,18 +2,19 @@
 # hclustalign.py
 # perform hierarchical clustering
 
-from fatools.lib.utils import cverr  # , cerr, cexit
-from fatools.lib import const
-from fatools.lib.fautil.alignutils import (estimate_z, AlignResult, align_dp,
-                                           pair_sized_peaks,
-                                           generate_similarity)
+from fatoolsng.lib.utils import cverr  # , cerr, cexit
+from fatoolsng.lib import const
+from fatoolsng.lib.fautil.alignutils import (estimate_z, AlignResult, align_dp,
+                                             pair_sized_peaks,
+                                             generate_similarity)
 
-from jax.scipy.cluster.hierarchy import linkage, fcluster  # , dendrogram
+from scipy.cluster.hierarchy import linkage, fcluster  # , dendrogram
 from collections import defaultdict
 from functools import reduce
 import operator
-# from jax.numpy import poly1d
+# from numpy import poly1d
 import attr
+
 
 @attr.s
 class T(object):

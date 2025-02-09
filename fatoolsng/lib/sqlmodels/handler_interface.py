@@ -1,4 +1,3 @@
-
 from pandas import DataFrame
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -146,7 +145,8 @@ class base_sqlhandler(object):
                                                               assay_id,
                                                               marker_id,
                                                               allele_id, value,
-                                                              size, height) in q])
+                                                              size,
+                                                              height) in q])
 
         else:
 
@@ -156,9 +156,12 @@ class base_sqlhandler(object):
             max_height = 0
             last_marker_id = 0
             last_sample_id = 0
-            skip_flag = False  # whether to skip the current sample & marker
-            stutter_flag = False  # whether current allele is considered stutter
-            current_alleles = None  # contains the alleles of current sample & marker
+            skip_flag = False
+            # whether to skip the current sample & marker
+            stutter_flag = False
+            # whether current allele is considered stutter
+            current_alleles = None
+            # contains the alleles of current sample & marker
 
             # the loop
             for (sample_id, assay_id, marker_id, allele_id, value, size, height) in q:

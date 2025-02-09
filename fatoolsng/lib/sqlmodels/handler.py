@@ -1,9 +1,9 @@
 
 import sys
 import os
-from fatools.lib.utils import cout, cerr
-from fatools.lib.sqlmodels.handler_interface import base_sqlhandler
-from fatools.lib.sqlmodels import schema
+from fatoolsng.lib.utils import cout, cerr
+from fatoolsng.lib.sqlmodels.handler_interface import base_sqlhandler
+from fatoolsng.lib.sqlmodels import schema
 
 
 class SQLHandler(base_sqlhandler):
@@ -31,6 +31,6 @@ class SQLHandler(base_sqlhandler):
     def initdb(self, create_table=True):
         if create_table:
             schema.Base.metadata.create_all(self.engine)
-        from fatools.lib.sqlmodels.setup import setup
+        from fatoolsng.lib.sqlmodels.setup import setup
         setup(self.session)
         cout('Database at %s has been initialized.' % self.dbfile)

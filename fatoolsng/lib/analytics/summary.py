@@ -1,7 +1,5 @@
-
 from collections import defaultdict
 from jax.numpy import mean, percentile
-# import sys
 from pprint import pprint
 
 
@@ -22,15 +20,11 @@ def summarize_alleles(analytical_sets):
                 unique_alleles:
                 ...
     """
-
     summaries = {}
-
     for analytical_set in analytical_sets:
-
         summary = summarize_allele_df(analytical_set.allele_df)
         summaries[analytical_set.label] = {'summary': summary,
                                            'colour': analytical_set.colour}
-
     return summaries
 
 
@@ -39,13 +33,10 @@ def summarize_allele_df(allele_df):
         alleles: [(allele, freq, count, mean_height, min_size, max_size, delta, items), ...]
             where items is [
     """
-
     allele_list = defaultdict(list)
     # marker_list = defaultdict(lambda x = None: ([], []))
     # print(allele_df)
-
     for (marker_id, allele), df in allele_df.grouped_df:
-
         allele_list[marker_id].append((allele, len(df), mean(df['height']),
                                        min(df['size']), max(df['size']),
                                        list(df['sample_id']), mean(df['size']),
@@ -53,11 +44,8 @@ def summarize_allele_df(allele_df):
 
         # marker_list[marker_id][0].extend(df['size'])
         # marker_list[marker_id][1].extend(df['height'])
-
     # calculate other stuff
-
     results = {}
-
     for marker_id in allele_list:
         alleles = allele_list[marker_id]
         total_allele = sum(x[1] for x in alleles)
@@ -67,9 +55,7 @@ def summarize_allele_df(allele_df):
                                                  min_size, max_size,
                                                  sample_ids, mean_size, items)
                          in alleles]
-
         delta_status = check_delta(allele_params)
-
         results[marker_id] = dict(code=marker_id,
                                   unique_allele=len(allele_params),
                                   total_allele=total_allele,
@@ -77,19 +63,15 @@ def summarize_allele_df(allele_df):
                                   delta_status=delta_status,
                                   # items = marker_list[marker_id]
                                   )
-
     return results
 
 
 def check_delta(alleles):
     """ return True if allele bin is 1 bp adjacent to prev or nex allele bin """
-
     # check if only single allele
     if len(alleles) <= 1:
         return [True]
-
     threshold = 1
-
     delta_status = []
     if alleles[1][0] - alleles[0][0] <= threshold:
         delta_status.append(False)
@@ -105,18 +87,14 @@ def check_delta(alleles):
         delta_status.append(False)
     else:
         delta_status.append(True)
-
     return delta_status
 
 
 def summarize_bins(analytical_sets):
     """ return bin summary for each marker """
-
     allele_summaries = summarize_alleles(analytical_sets)
-
     marker_summaries = defaultdict(lambda x=None: defaultdict(list))
     # marker_summaries[marker_id] = { bin1: [ ?, ..], bin2:
-
     # collect items (sizes) for each marker
     for label in allele_summaries:
         for (marker_id,
@@ -127,10 +105,8 @@ def summarize_bins(analytical_sets):
                 size_items = allele_params[9][0]
                 marker_summaries[marker_id][bin_value].extend(size_items)
                 marker_summaries[marker_id][bin_value].sort()
-
     pprint(marker_summaries)
     bin_summaries = {}
-
     # process marker summary to obtain new bin paramater
     for marker_id, marker_summary in marker_summaries.items():
         empirical_bins = {}
@@ -142,7 +118,6 @@ def summarize_bins(analytical_sets):
                                           round(float(percentiles[0]), 3),
                                           round(float(percentiles[1]), 3)]
         bin_summaries[marker_id] = empirical_bins
-
     return bin_summaries
 
 
@@ -156,14 +131,11 @@ def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
     marker_ids = set()
     for (label, allele_report) in allele_reports.items():
         marker_ids.update(allele_report['summary'].keys())
-
     m = len(marker_ids) + 1  # add 1 for legends
     fig = plt.figure(figsize=(21, 4 * m), dpi=600)
-
     axes = {}
     axhlines = set()
     binsets = {}
-
     for idx, allele_report in enumerate(allele_reports.values(), 0):
         pprint(allele_report)
         colour = allele_report['colour']
@@ -199,34 +171,27 @@ def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
                 # just to make sure we don't duplicate these lines
                 ax.axhline(idx, color='#aaaaaa')
                 axhlines.add((ax, idx))
-
     for (marker_id, ax) in axes.items():
-
         ax.get_xaxis().set_tick_params(which='both', direction='out')
         ax.get_yaxis().set_tick_params(which='both', direction='out')
         ax.get_xaxis().set_minor_locator(MultipleLocator(1))
         ax.get_xaxis().set_ticks(sorted(list(binsets[marker_id])))
         ax.get_yaxis().set_minor_locator(MultipleLocator(0.25))
         ax.get_yaxis().set_major_locator(plt.NullLocator())
-
         for label in ax.get_xticklabels():
             label.set_size('xx-small')
             label.set_fontsize(12)
             label.set_rotation(90)
         for label in ax.get_yticklabels():
             label.set_size('xx-small')
-
         if dbh:
             ax.set_ylabel(dbh.get_marker_by_id(marker_id).label, fontsize=16)
         else:
             ax.set_ylabel(marker_id, fontsize=16)
-
         ax.set_ylim(-0.05)
         # ax.set_xlim(min(data[0]), max(data[0]))
         ax.set_xlim(auto=True)
-
     # create the legend plot by creating dummy
-
     lx = fig.add_subplot(m, 1, m)
     for label, allele_report in allele_reports.items():
         lx.vlines([0, 0], [0], [0, 0],
@@ -235,21 +200,16 @@ def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
     leg = lx.legend(ncol=len(allele_reports), prop={'size': 18})
     # lx.set_ylabel('Legend')
     lx.set_axis_off()
-
     fig.tight_layout()
-
     fig.savefig(filename)
     plt.close()
 
 
 def summarize_haplotypes(haplotype_sets):
-
     summaries = {}
     H = {}  # dictionary containing all haplotype_sets
-
     for hs in haplotype_sets:
         summaries[hs.label] = summarize_haplotype_df(hs.haplotype_df)
-
     # check all haplotypes, finding singletons (or dualtons, tripletons, etc)
 
 

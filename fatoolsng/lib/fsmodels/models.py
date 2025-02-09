@@ -1,9 +1,9 @@
 # basic classes that mimic msdb classes
 # this is filesystem-based database
-
-
-from fatools.lib.fautil.mixin import (AssayMixIn, ChannelMixIn,
-                                      MarkerMixIn, PanelMixIn, AlleleSetMixIn)
+import os
+from fatoolsng.lib.fautil.mixin import (AssayMixIn, ChannelMixIn,
+                                        MarkerMixIn, PanelMixIn,
+                                        AlleleSetMixIn)
 
 
 class sessionmgr(object):
@@ -102,7 +102,8 @@ class Channel(base, ChannelMixIn, AlleleSetMixIn):
 
     def __init__(self):
         self.raw_data = None    # raw data from ABI
-        self.data = None  # smoothed data using savitzky-golay and baseline correction
+        self.data = None
+        # smoothed data using savitzky-golay and baseline correction
         self.marker = None
         self.dye = None
 

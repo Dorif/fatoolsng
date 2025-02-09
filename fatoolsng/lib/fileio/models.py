@@ -3,11 +3,10 @@
 # models here are used to ensure the integrity and consistency of each
 # inherited model
 
-
-from fatools.lib.utils import cerr  # , cout
-from fatools.lib.fautil.mixin2 import MarkerMixIn, PanelMixIn, ChannelMixIn, FSAMixIn, AlleleMixIn
-from fatools.lib import const
-
+from fatoolsng.lib.utils import cerr  # , cout
+from fatoolsng.lib.fautil.mixin2 import (MarkerMixIn, PanelMixIn, ChannelMixIn,
+                                         FSAMixIn, AlleleMixIn)
+from fatoolsng.lib import const
 import os
 import pickle
 
@@ -64,7 +63,6 @@ class Allele(AlleleMixIn):
         self.beta = beta
         self.theta = theta
         self.omega = omega
-
         self.size = -1
         self.bin = -1
         self.dev = -1
@@ -115,7 +113,6 @@ class FSA(FSAMixIn):
         fsa = cls()
         fsa.filename = os.path.basename(fsa_filename)
         fsa.set_panel(panel, excluded_markers)
-
         # with fileio, we need to prepare channels everytime or seek from cache
         if cache_path is None:
             cache = False
@@ -134,7 +131,6 @@ class FSA(FSAMixIn):
                     return fsa
                 except AttributeError:
                     cerr('E: uploading failed, will recreate cache')
-
         with open(fsa_filename, 'rb') as fsa_handle:
             fsa._fhdl = fsa_handle
             fsa.create_channels()
@@ -146,5 +142,4 @@ class FSA(FSAMixIn):
                 pickle.dump(fsa.channels, cache_handle_write)
             for c in fsa.channels:
                 c.fsa = fsa
-
         return fsa

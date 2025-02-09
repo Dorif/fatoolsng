@@ -11,17 +11,17 @@ http://www.gnu.org/licenses/gpl.html
 __version__ = '20081006a'
 
 import struct
-import sys
+from sys import argv, stderr
 from jax.numpy import array
 import datetime
-from .traceutils import smooth_signal, correct_baseline
+from traceutils import smooth_signal, correct_baseline
 
 DEBUG = False
 
 
 def D(text):
     if DEBUG:
-        print(text, file=sys.stderr, flush=True)
+        print(text, file=stderr, flush=True)
 
 
 def b(txt):
@@ -113,16 +113,19 @@ class ABIF(object):
             pass
         order = self.get_data(b'FWO_1')
         order.upper()
-        t.trace_A = self.get_data(('DATA%d' % (9 + order.index(b'A'))).encode('ASCII'))
-        t.trace_C = self.get_data(('DATA%d' % (9 + order.index(b'C'))).encode('ASCII'))
-        t.trace_G = self.get_data(('DATA%d' % (9 + order.index(b'G'))).encode('ASCII'))
-        t.trace_T = self.get_data(('DATA%d' % (9 + order.index(b'T'))).encode('ASCII'))
+        t.trace_A = self.get_data(('DATA%d' %
+                                   (9 + order.index(b'A'))).encode('ASCII'))
+        t.trace_C = self.get_data(('DATA%d' %
+                                   (9 + order.index(b'C'))).encode('ASCII'))
+        t.trace_G = self.get_data(('DATA%d' %
+                                   (9 + order.index(b'G'))).encode('ASCII'))
+        t.trace_T = self.get_data(('DATA%d' %
+                                   (9 + order.index(b'T'))).encode('ASCII'))
 
         return t
 
+# return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth]
     def get_channels(self):
-        # return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth]
-
         results = {}
         for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
             try:
@@ -190,7 +193,8 @@ def read_abif_stream(istream):
             de.num -= 1
         etype_fmt = abitypes.get(alt_type)
         if not etype_fmt:
-            raise RuntimeError('unknown alt_type: %d with de.num: %d' % (alt_type, de.num))
+            raise RuntimeError('unknown alt_type: %d with de.num: %d' %
+                               (alt_type, de.num))
         if alt_type not in (10, 11, 1024):
             etype_fmt = etype_fmt % de.num
         elif alt_type == 1024:
@@ -232,7 +236,7 @@ WAVELENGTH = {
 
 if __name__ == '__main__':
     """ write spectra in abif file to tab-separated text file """
-    for infile in sys.argv[1:]:
+    for infile in argv[1:]:
         with open(infile, 'rb') as instream:
             t = read_abif_stream(instream)
         channels = t.get_channels()

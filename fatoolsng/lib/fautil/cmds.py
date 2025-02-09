@@ -1,9 +1,12 @@
 # provide commands for Fragment Analysis (FA)
 
-from fatools.lib import params
-from fatools.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity  # , cout
+from fatoolsng.lib import params
+from fatoolsng.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity  # , cout
 from sys import exit
-import argparse, yaml, csv, os
+import argparse
+import yaml
+import csv
+import os
 from io import StringIO
 
 
@@ -176,14 +179,14 @@ def do_plot(args, fsa_list, dbh):
 
     cerr('I: Creating plot...')
 
-    from fatools.lib.fautil import plot
+    from fatoolsng.lib.fautil import plot
 
     plot.plot(args, fsa_list, dbh)
 
 
 def do_dendogram(args, fsa_list, dbh):
 
-    from fatools.lib.fautil import hclustalign
+    from fatoolsng.lib.fautil import hclustalign
     from matplotlib import pyplot as plt
 
     for (fsa, sample_code) in fsa_list:
@@ -221,7 +224,7 @@ def open_fsa(args):
         requires: args.file, args.panel, args.panelfile
     """
 
-    from fatools.lib.fileio.models import Marker, Panel, FSA
+    from fatoolsng.lib.fileio.models import Marker, Panel, FSA
 
     if not args.panel:
         cexit('ERR: using FSA file(s) requires --panel argument!')
@@ -336,9 +339,8 @@ def get_fsa_list(args, dbh):
         if samples and sample.code not in samples:
             continue
         for assay in sample.assays:
-            if assays and assay.filename not in assays:
-                continue
-            if panels and assay.panel.code not in panels:
+            if ((assays and assay.filename not in assays) or
+                (panels and assay.panel.code not in panels)):
                 continue
             fsa_list.append((assay, sample.code))
 

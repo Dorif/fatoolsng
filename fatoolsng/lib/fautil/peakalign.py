@@ -1,9 +1,8 @@
+from fatoolsng.lib.utils import cerr  # , cout
+from fatoolsng.lib.const import alignmethod
+from fatoolsng.lib.fautil import dpalign as dp
 
-from fatools.lib.utils import cerr  # , cout
-from fatools.lib.const import alignmethod
-from fatools.lib.fautil import dpalign as dp
-
-from jax.numpy import poly1d
+from numpy import poly1d
 import pprint
 cdbg = cerr
 
@@ -128,8 +127,8 @@ def greedy_align(data, ladders, peaks, qcfunc):
                 return (score_shift, msg_shift, result_shift[:4],
                         alignmethod.greedy_shifted)
             if result_shift[0] <= dp_score and
-            ((result_shift[1] >= dp_rss and score_shift <= score) or
-             counter > 50):
+               ((result_shift[1] >= dp_rss and score_shift <= score) or
+                counter > 50):
                 break
             dp_score, dp_rss, dp_z, dp_peaks = result_shift[:4]
             score = score_shift

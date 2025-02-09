@@ -1,5 +1,5 @@
-from fatools.lib.utils import cerr
-from fatools.lib.params import default_markers, default_panels
+from fatoolsng.lib.utils import cerr
+from fatoolsng.lib.params import default_markers, default_panels
 
 
 def setup(dbh):

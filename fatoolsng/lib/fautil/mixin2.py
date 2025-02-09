@@ -1,7 +1,6 @@
-
-from fatools.lib.fautil import algo2 as algo
-from fatools.lib.utils import cout, cerr  # , cexit
-from fatools.lib import const
+from fatoolsng.lib.fautil import algo2 as algo
+from fatoolsng.lib.utils import cout, cerr  # , cexit
+from fatoolsng.lib import const
 
 # import attr
 import time
@@ -65,7 +64,8 @@ class ChannelMixIn(object):
             return
 
         alleles = algo.scan_peaks(self, parameters.ladder
-                                  if self.is_ladder() else parameters.nonladder)
+                                  if self.is_ladder()
+                                  else parameters.nonladder)
 
         # import pprint; pprint.pprint(alleles)
 

@@ -1,5 +1,5 @@
-
-from jax.numpy import polyfit, poly1d, insert, zeros, array, log10, linspace
+from numpy import poly1d
+from jax.numpy import polyfit, insert, zeros, array, log10, linspace
 from math import sqrt, exp, log
 # import pprint
 
@@ -198,7 +198,7 @@ def dp(S, gap_penalty, peak_penalty=0):
     col_length = len(S[0, :])
 
     # free for 25% peaks
-    missing_20 = row_length * 0.25
+    missing_20 = row_length/4
 
     # D contains the score of the optimal alignment
     D = zeros((row_length+1, col_length+1), dtype='d')

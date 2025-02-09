@@ -1,7 +1,6 @@
-#
-# this script contains commands which do not need to update the database content
-# commands that need to update/change the database content should be in facmd toolset
-#
+# this script contains commands which do not need to update the database
+# content commands that need to update/change the database content should be
+# in facmd toolset
 
 import argparse
 import yaml
@@ -99,7 +98,7 @@ def do_samplesummary(args, dbh):
 
 def do_allelesummary(args, dbh):
 
-    from fatools.lib.analytics.summary import summarize_alleles, plot_alleles
+    from fatoolsng.lib.analytics.summary import summarize_alleles, plot_alleles
 
     query = get_query(args, dbh)
     analytical_sets = query.get_filtered_analytical_sets()
@@ -175,7 +174,7 @@ def do_export(args, dbh):
 
 def do_corralleles(args, dbh):
 
-    from fatools.lib.analysis.correlation import correlate_alleles
+    from fatoolsng.lib.analysis.correlation import correlate_alleles
 
     query = get_query(args, dbh)
     analytical_sets = query.get_filtered_analytical_sets()

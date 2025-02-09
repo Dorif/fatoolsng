@@ -1,9 +1,7 @@
-
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker  # , mapper
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, create_engine, func
-
 from sqlalchemy import types, Column, ForeignKey, UniqueConstraint, Table
 from sqlalchemy.orm import relationship, backref, deferred, reconstructor
 # from sqlalchemy.orm.collections import column_mapped_collection, attribute_mapped_collection
@@ -14,21 +12,25 @@ from sqlalchemy.orm.session import object_session
 # from sqlalchemy.ext.associationproxy import association_proxy
 # from sqlalchemy.ext.declarative import declared_attr, declarative_base
 # from sqlalchemy.sql.functions import current_timestamp
-
 from zope.sqlalchemy import ZopeTransactionExtension
-
-from fatools.lib.utils import cerr
-from fatools.lib.fautil.mixin import (PanelMixIn, AssayMixIn, ChannelMixIn, MarkerMixIn,
-                BinMixIn, AlleleSetMixIn, AlleleMixIn, SampleMixIn, BatchMixIn,
-                NoteMixIn, BatchNoteMixIn, SampleNoteMixIn, AssayNoteMixIn,
-                ChannelNoteMixIn, AlleleSetNoteMixIn, PanelNoteMixIn, MarkerNoteMixIn)
+from fatoolsng.lib.utils import cerr
+from fatoolsng.lib.fautil.mixin import (PanelMixIn, AssayMixIn, ChannelMixIn,
+                                        MarkerMixIn, BinMixIn, AlleleSetMixIn,
+                                        AlleleMixIn, SampleMixIn, BatchMixIn,
+                                        NoteMixIn, BatchNoteMixIn,
+                                        SampleNoteMixIn, AssayNoteMixIn,
+                                        ChannelNoteMixIn, AlleleSetNoteMixIn,
+                                        PanelNoteMixIn, MarkerNoteMixIn)
 
 import os
 import io
 import yaml
 from sys import exit
+from jax.numpy import save, load
+import copy
+import json
 
-#__all__ = ['get_base', 'get_dbsession', 'set_datalogger']
+# __all__ = ['get_base', 'get_dbsession', 'set_datalogger']
 
 # this is necessary for SQLite to use FOREIGN KEY support (as well as ON DELETE CASCADE)
 
@@ -117,9 +119,6 @@ class YAMLCol(types.TypeDecorator):
 
     def copy_value(self, value):
         return copy.deepcopy(value)
-
-from jax.numpy import save, load
-import copy
 
 
 class NPArray(types.TypeDecorator):
@@ -235,7 +234,8 @@ class Sample(Base, SampleMixIn):
     string2 = Column(types.String(16), nullable=False,
                      default='')  # custom usage
     batch = relationship(Batch, uselist=False,
-            backref=backref('samples', lazy='dynamic', cascade='save-update,delete'))
+                         backref=backref('samples', lazy='dynamic',
+                                         cascade='save-update,delete'))
     remark = deferred(Column(types.String(1024), nullable=True))
 
     __table_args__ = (UniqueConstraint('code', 'batch_id'),

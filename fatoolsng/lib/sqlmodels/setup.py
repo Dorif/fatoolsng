@@ -1,6 +1,5 @@
-
-from fatools.lib.sqlmodels import schema
-from fatools.lib.utils import cout
+from fatoolsng.lib.sqlmodels import schema
+from fatoolsng.lib.utils import cout
 
 
 def setup(session):

@@ -51,13 +51,13 @@ def get_dbhandler(args, initial=False):
 
         if args.schema == 1:
 
-            from fatools.lib.sqlmodels.handler import SQLHandler
+            from fatoolsng.lib.sqlmodels.handler import SQLHandler
 
             return SQLHandler(args.sqldb, initial)
 
         elif args.schema == 2:
 
-            from fatools.lib.sqlmodels2.handler import SQLHandler
+            from fatoolsng.lib.sqlmodels2.handler import SQLHandler
 
             return SQLHandler(args.sqldb, initial)
 
@@ -99,13 +99,11 @@ def acquire_R():
 
         # initialize rpy2 and set thread lock
 
-        from rpy2 import robjects
         from rpy2.robjects import pandas2ri
         import threading
 
         pandas2ri.activate()
         _R_lock_ = threading.Lock()
-
     _R_lock_.acquire()
 
 

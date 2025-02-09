@@ -1,30 +1,33 @@
-
 from math import factorial
-import numpy as np
+from jax.numpy import (repeat, min, max, mean, median, std, linalg, abs,
+                       maximum, linspace, hanning, r_, ones, sum, array,
+                       concatenate, convolve)
+from numpy import mat
 import attr
-from scipy import ndimage, signal, optimize
+from scipy.optimize import curve_fit
+from scipy.ndimage import white_tophat
+from scipy.signal import find_peaks_cwt, medfilt, savgol_filter
 
-
-_TOPHAT_FACTOR = 0.01 #025   #05
+_TOPHAT_FACTOR = 0.01  # 025   #05
 _MEDWINSIZE = 299
 _MEDMMSIZE = 1991
+
 
 def b(txt):
     """ return a binary string aka bytes """
     return txt.encode('UTF-8')
 
 
-def smooth_signal( raw_signal ):
+def smooth_signal(raw_signal):
     """ smooth signal using savitzky_golay algorithm """
-    return savitzky_golay( raw_signal, 11, 7 )
+    return savitzky_golay(raw_signal, 11, 7)
 
 
-def correct_baseline( signal ):
+def correct_baseline(signal):
     """ use tophat morphological transform to correct for baseline """
 
-    return ndimage.white_tophat(signal, None,
-                np.repeat([1], int(round(signal.size * _TOPHAT_FACTOR)))
-            )
+    return white_tophat(signal, None,
+                        repeat([1], int(round(signal.size*_TOPHAT_FACTOR))))
 
 
 @attr.s
@@ -41,32 +44,34 @@ def func_mm(x, a, b):
     """
     return a*x/(b+x)
 
-def normalize_baseline( raw ):
+
+def normalize_baseline(raw):
     """ return mean, median, sd and smooth signal """
 
-    median_line = signal.medfilt(raw, [_MEDWINSIZE])
-    baseline = signal.savgol_filter( median_line, _MEDWINSIZE, 7)
+    median_line = medfilt(raw, [_MEDWINSIZE])
+    baseline = savgol_filter(median_line, _MEDWINSIZE, 7)
     corrected_baseline = raw - baseline
-    np.maximum(corrected_baseline, 0, out=corrected_baseline)
-    smooth = correct_baseline( signal.savgol_filter(corrected_baseline, 11, 7) )
+    maximum(corrected_baseline, 0, out=corrected_baseline)
+    smooth = correct_baseline(savgol_filter(corrected_baseline, 11, 7))
 
     # perform michaelis-menten equation for baseline assessment
-    mm_line = signal.medfilt(raw, [ _MEDMMSIZE ])
-    xx = np.linspace(0, len(raw) )
+    mm_line = medfilt(raw, [_MEDMMSIZE])
+    xx = np.linspace(0, len(raw))
     try:
-        popt, pcov = optimize.curve_fit(func_mm, xx, mm_line)
+        popt, pcov = curve_fit(func_mm, xx, mm_line)
     except:
         # michaelis menten are not appropriate for this scale
         popt = pcov = [0, 0]
 
-    return NormalizedTrace( signal=smooth, baseline = baseline, mma = popt[0], mmb = popt[1] )
+    return NormalizedTrace(signal=smooth, baseline=baseline, mma=popt[0],
+                           mmb=popt[1])
 
 
-def search_peaks( signal, cwt_widths, min_snr ):
+def search_peaks(signal, cwt_widths, min_snr):
     """ returns [ (peak, height, area) ], ... ] """
 
     # find all peaks by cwt-based algorithm
-    indices = find_peaks_cwt( signal, cwt_widths, min_snr=min_snr )
+    indices = find_peaks_cwt(signal, cwt_widths, min_snr=min_snr)
 
     if not indices:
         return []
@@ -77,7 +82,8 @@ def search_peaks( signal, cwt_widths, min_snr ):
     for idx in indices:
         for i in range(3, -1, -1):
             try:
-                height, index = max( [ (signal[i], i) for i in range(idx-3, idx+3) ] )
+                height, index = max([(signal[i], i) for i in range(idx-3,
+                                                                   idx+3)])
             except IndexError:
                 continue
             break
@@ -85,18 +91,16 @@ def search_peaks( signal, cwt_widths, min_snr ):
             continue
         if index < 0:
             continue
-        raw_peaks.append( (index, height) )
+        raw_peaks.append((index, height))
 
     if not raw_peaks:
         return []
 
-
     # calculate area
     peaks = []
     for (peak, height) in raw_peaks:
-        area, brtime, ertime = calculate_area( signal, peak, 5e-2 )
-        peaks.append( (peak, height, area, brtime, ertime) )
-
+        area, brtime, ertime = calculate_area(signal, peak, 5e-2)
+        peaks.append((peak, height, area, brtime, ertime))
 
     return peaks
 
@@ -111,10 +115,9 @@ def calculate_area(y, t, threshold):
 
     # left area
     data = y[:t+1][::-1]
-    l_area, brtime, l_shared= half_area(data, threshold)
+    l_area, brtime, l_shared = half_area(data, threshold)
 
-    return ( l_area + r_area - y[t], t - brtime, ertime + t )
-
+    return (l_area + r_area - y[t], t - brtime, ertime + t)
 
 
 def half_area(y, threshold):
@@ -125,7 +128,7 @@ def half_area(y, threshold):
     threshold = threshold/2
     shared = False
     area = y[0]
-    edge = float(np.sum(y[0:winsize]))/winsize
+    edge = float(sum(y[0:winsize]))/winsize
     old_edge = 2 * edge
 
     index = 1
@@ -134,7 +137,7 @@ def half_area(y, threshold):
     while edge > area * threshold and edge < old_edge and index < limit:
         old_edge = edge
         area += y[index]
-        edge = float(np.sum(y[index:index+winsize]))/winsize
+        edge = float(sum(y[index:index+winsize]))/winsize
         index += 1
     if edge >= old_edge:
         shared = True
@@ -156,34 +159,37 @@ class TraceChannel(object):
     min_height = attr.ib()
 
 
-def separate_channels( trace ):
-    # return a list of [ 'dye name', dye_wavelength, numpy_array, numpy_smooth_baseline ]
+# return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth_baseline]
+def separate_channels(trace):
 
     from fatools.lib.fautil.traceio import WAVELENGTH
 
     results = []
-    for (idx, data_idx) in [ (1,1), (2,2), (3,3), (4,4), (5,105) ]:
+    for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
         try:
             dye_name = trace.get_data(b('DyeN%d' % idx)).decode('UTF-8')
-            #dye_wavelength = trace.get_data(b('DyeW%d' % idx))
+            # dye_wavelength = trace.get_data(b('DyeW%d' % idx))
 
             # below is to workaround on some strange dye names
-            if dye_name == '6FAM': dye_name = '6-FAM'
-            elif dye_name == 'PAT': dye_name = 'PET'
-            elif dye_name == 'Bn Joda': dye_name = 'LIZ'
+            if dye_name == '6FAM':
+                dye_name = '6-FAM'
+            elif dye_name == 'PAT':
+                dye_name = 'PET'
+            elif dye_name == 'Bn Joda':
+                dye_name = 'LIZ'
 
             try:
                 dye_wavelength = trace.get_data(b('DyeW%d' % idx))
             except KeyError:
                 dye_wavelength = WAVELENGTH[dye_name]
 
-            raw_channel = np.array( trace.get_data(b('DATA%d' % data_idx)) )
-            nt = normalize_baseline( raw_channel )
+            raw_channel = array(trace.get_data(b('DATA%d' % data_idx)))
+            nt = normalize_baseline(raw_channel)
 
-            results.append( TraceChannel(dye_name, dye_wavelength, raw_channel,
-                            nt.signal, np.median(nt.baseline), np.mean(nt.baseline),
-                            np.std(nt.baseline), np.max(nt.baseline), np.min(nt.baseline))
-            )
+            results.append(TraceChannel(dye_name, dye_wavelength, raw_channel,
+                           nt.signal, median(nt.baseline), mean(nt.baseline),
+                           std(nt.baseline), max(nt.baseline),
+                           min(nt.baseline)))
         except KeyError:
             pass
 
@@ -206,7 +212,7 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
         the order of the polynomial used in the filtering.
         Must be less then `window_size` - 1.
     deriv: int
-        the order of the derivative to compute (default = 0 means only smoothing)
+        the order of the derivative to compute (default=0 means only smoothing)
     Returns
     -------
     ys : ndarray, shape (N)
@@ -220,12 +226,12 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     the point.
     Examples
     --------
-    t = np.linspace(-4, 4, 500)
-    y = np.exp( -t**2 ) + np.random.normal(0, 0.05, t.shape)
+    t = linspace(-4, 4, 500)
+    y = exp( -t**2 ) + random.normal(0, 0.05, t.shape)
     ysg = savitzky_golay(y, window_size=31, order=4)
     import matplotlib.pyplot as plt
     plt.plot(t, y, label='Noisy signal')
-    plt.plot(t, np.exp(-t**2), 'k', lw=1.5, label='Original signal')
+    plt.plot(t, exp(-t**2), 'k', lw=1.5, label='Original signal')
     plt.plot(t, ysg, 'r', label='Filtered signal')
     plt.legend()
     plt.show()
@@ -238,12 +244,10 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
        W.H. Press, S.A. Teukolsky, W.T. Vetterling, B.P. Flannery
        Cambridge University Press ISBN-13: 9780521880688
     """
-    import numpy as np
-    from math import factorial
 
     try:
-        window_size = np.abs(np.int(window_size))
-        order = np.abs(np.int(order))
+        window_size = abs(int(window_size))
+        order = abs(int(order))
     except ValueError as msg:
         raise ValueError("window_size and order have to be of type int")
     if window_size % 2 != 1 or window_size < 1:
@@ -251,19 +255,20 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     if window_size < order + 2:
         raise TypeError("window_size is too small for the polynomials order")
     order_range = range(order+1)
-    half_window = (window_size -1) // 2
+    half_window = (window_size - 1) // 2
     # precompute coefficients
-    b = np.mat([[k**i for i in order_range] for k in range(-half_window, half_window+1)])
-    m = np.linalg.pinv(b).A[deriv] * rate**deriv * factorial(deriv)
+    b = mat([[k**i for i in order_range] for k in range(-half_window,
+                                                        half_window+1)])
+    m = linalg.pinv(b).A[deriv] * rate**deriv * factorial(deriv)
     # pad the signal at the extremes with
     # values taken from the signal itself
-    firstvals = y[0] - np.abs( y[1:half_window+1][::-1] - y[0] )
-    lastvals = y[-1] + np.abs(y[-half_window-1:-1][::-1] - y[-1])
-    y = np.concatenate((firstvals, y, lastvals))
-    return np.convolve( m[::-1], y, mode='valid')
+    firstvals = y[0] - abs(y[1:half_window+1][::-1] - y[0])
+    lastvals = y[-1] + abs(y[-half_window-1:-1][::-1] - y[-1])
+    y = concatenate((firstvals, y, lastvals))
+    return convolve(m[::-1], y, mode='valid')
 
 
-def smooth(x,window_len=11,window='hanning'):
+def smooth(x, window_len=11, window='hanning'):
     """smooth the data using a window with requested size.
 
     This method is based on the convolution of a scaled window with the signal.
@@ -273,8 +278,10 @@ def smooth(x,window_len=11,window='hanning'):
 
     input:
         x: the input signal
-        window_len: the dimension of the smoothing window; should be an odd integer
-        window: the type of window from 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'
+        window_len: the dimension of the smoothing window; should be an odd
+        integer
+        window: the type of window from 'flat', 'hanning', 'hamming',
+        'bartlett', 'blackman'
             flat window will produce a moving average smoothing.
 
     output:
@@ -288,35 +295,33 @@ def smooth(x,window_len=11,window='hanning'):
 
     see also:
 
-    numpy.hanning, numpy.hamming, numpy.bartlett, numpy.blackman, numpy.convolve
+    numpy: hanning, hamming, bartlett, blackman, convolve
     scipy.signal.lfilter
 
-    TODO: the window parameter could be the window itself if an array instead of a string
-    NOTE: length(output) != length(input), to correct this: return y[(window_len/2-1):-(window_len/2)] instead of just y.
+    TODO: the window parameter could be the window itself if an array
+    instead of a string
+    NOTE: length(output) != length(input), to correct this:
+    return y[(window_len/2-1):-(window_len/2)] instead of just y.
     """
 
     if x.ndim != 1:
-        raise ValueError( "smooth only accepts 1 dimension arrays." )
+        raise ValueError("smooth only accepts 1 dimension arrays.")
 
     if x.size < window_len:
-        raise ValueError( "Input vector needs to be bigger than window size." )
+        raise ValueError("Input vector needs to be bigger than window size.")
 
-
-    if window_len<3:
+    if window_len < 3:
         return x
 
-
     if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
-        raise ValueError( "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+        raise ValueError("Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-
-    s=np.r_[x[window_len-1:0:-1],x,x[-1:-window_len:-1]]
-    #print(len(s))
-    if window == 'flat': #moving average
-        w=np.ones(window_len,'d')
+    s = r_[x[window_len-1:0:-1], x, x[-1:-window_len:-1]]
+    # print(len(s))
+    if window == 'flat':  # moving average
+        w = ones(window_len, 'd')
     else:
-        w=eval('np.'+window+'(window_len)')
+        w = eval('hanning(window_len)')
 
-    y=np.convolve(w/w.sum(),s,mode='valid')
+    y = convolve(w/w.sum(), s, mode='valid')
     return y
-

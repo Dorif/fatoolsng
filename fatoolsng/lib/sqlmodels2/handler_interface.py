@@ -1,6 +1,6 @@
-
 from pandas import DataFrame
 from sqlalchemy.orm.exc import NoResultFound
+
 
 class base_sqlhandler(object):
     """ base class for SQLAlchemy-friendly handler """
@@ -40,7 +40,8 @@ class base_sqlhandler(object):
             if panel_code is None:
                 return self.get_panels()
             elif type(panel_code) is list:
-                return [self.Panel.search(p, self.session()) for p in panel_code]
+                return [self.Panel.search(p,
+                                          self.session()) for p in panel_code]
             else:
                 return self.Panel.search(panel_code, self.session())
         except NoResultFound:
@@ -51,7 +52,8 @@ class base_sqlhandler(object):
             if batch_code is None:
                 return self.get_batches()
             elif type(batch_code) is list:
-                return [self.Batch.search(b, self.session()) for b in batch_code]
+                return [self.Batch.search(b,
+                                          self.session()) for b in batch_code]
             else:
                 return self.Batch.search(batch_code, self.session())
         except NoResultFound:
@@ -150,9 +152,12 @@ class base_sqlhandler(object):
             max_height = 0
             last_marker_id = 0
             last_sample_id = 0
-            skip_flag = False  # whether to skip the current sample & marker
-            stutter_flag = False  # whether current allele is considered stutter
-            current_alleles = None  # contains the alleles of current sample & marker
+            skip_flag = False
+            # whether to skip the current sample & marker
+            stutter_flag = False
+            # whether current allele is considered stutter
+            current_alleles = None
+            # contains the alleles of current sample & marker
 
             # the loop
             for (sample_id, assay_id, marker_id, allele_id, value, size, height) in q:
@@ -183,7 +188,8 @@ class base_sqlhandler(object):
                                       allele_ratio < params.stutter_baseratio)):
                                     stutter_flag = True
                                     break
-                                    current_alleles.append((value, size, height))
+                                    current_alleles.append((value, size,
+                                                            height))
                                     print(sample_id, marker_id, value, size,
                                           height, allele_ratio)
                                     continue

@@ -1,8 +1,7 @@
-
-from fatools.lib.utils import cerr  # , cout
-from fatools.lib.fautil.dpalign import dp
-
-from jax.numpy import zeros, polyfit, poly1d, linspace, log10
+from fatoolsng.lib.utils import cerr  # , cout
+from fatoolsng.lib.fautil.dpalign import dp
+from numpy import poly1d
+from jax.numpy import zeros, polyfit, linspace, log10
 import attr
 from math import sqrt, log, exp
 

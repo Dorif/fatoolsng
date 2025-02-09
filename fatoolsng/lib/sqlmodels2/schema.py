@@ -1,9 +1,7 @@
-
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker, mapper
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, create_engine, func
-
 from sqlalchemy import types, Column, ForeignKey, UniqueConstraint, Table
 from sqlalchemy.orm import relationship, backref, deferred, reconstructor
 # from sqlalchemy.orm.collections import column_mapped_collection, attribute_mapped_collection
@@ -14,14 +12,15 @@ from sqlalchemy.orm.session import object_session
 # from sqlalchemy.ext.associationproxy import association_proxy
 # from sqlalchemy.ext.declarative import declared_attr, declarative_base
 # from sqlalchemy.sql.functions import current_timestamp
-
 from zope.sqlalchemy import ZopeTransactionExtension
-
-from fatools.lib.utils import cerr
-from fatools.lib.fautil.mixin2 import (PanelMixIn, FSAMixIn, ChannelMixIn, MarkerMixIn,
-                BinMixIn, AlleleSetMixIn, AlleleMixIn, SampleMixIn, BatchMixIn,
-                NoteMixIn, BatchNoteMixIn, SampleNoteMixIn, FSANoteMixIn,
-                ChannelNoteMixIn, AlleleSetNoteMixIn, PanelNoteMixIn, MarkerNoteMixIn)
+from fatoolsng.lib.utils import cerr
+from fatoolsng.lib.fautil.mixin2 import (PanelMixIn, FSAMixIn, ChannelMixIn,
+                                         MarkerMixIn, BinMixIn, AlleleSetMixIn,
+                                         AlleleMixIn, SampleMixIn, BatchMixIn,
+                                         NoteMixIn, BatchNoteMixIn,
+                                         SampleNoteMixIn, FSANoteMixIn,
+                                         ChannelNoteMixIn, AlleleSetNoteMixIn,
+                                         PanelNoteMixIn, MarkerNoteMixIn)
 import os
 import io
 import yaml
@@ -194,7 +193,7 @@ class Batch(Base, BatchMixIn):
 
     def get_marker(self, marker_code, species=None):
         session = object_session(self)
-        markers = None  #XXX: Fix me
+        markers = None  # XXX: Fix me
         raise NotImplementedError()
 
     @property
@@ -418,7 +417,7 @@ class Bin(Base, BinMixIn):
 
     remark = deferred(Column(types.String(512)))
 
-    __table_args__ = (UniqueConstraint( 'batch_id', 'marker_id' ),)
+    __table_args__ = (UniqueConstraint('batch_id', 'marker_id'),)
 
     @staticmethod
     def search(batch_id, marker_id, session):
@@ -474,7 +473,7 @@ class FSA(Base, FSAMixIn):
     raw_data = deferred(Column(types.Binary(), nullable=False))
     """ raw data for this assay (FSA file content) """
 
-    __table_args__ = (  UniqueConstraint( 'filename', 'panel_id', 'sample_id' ), )
+    __table_args__ = (UniqueConstraint('filename', 'panel_id', 'sample_id'),)
 
     def new_channel(self, raw_data, data, dye, wavelen, status, median, mean,
                     max_height, min_height, std_dev, initial_marker=None,
@@ -550,7 +549,7 @@ class Channel(Base, ChannelMixIn):
 
     def new_alleleset(self, revision=-1):
         return AlleleSet(channel=self, sample=self.fsa.sample,
-                         marker=self.marker )
+                         marker=self.marker)
 
     def clear(self):
         for alleleset in self.allelesets:
@@ -670,8 +669,8 @@ class Allele(Base, AlleleMixIn):
     bin = Column(types.Integer, nullable=False, default=-1)
     size = Column(types.Float, nullable=False, default=-1)
     deviation = Column(types.Float, nullable=False, default=-1)
-    # deviation -> for ladder channel, this is (z(rtime)-size)**2 or square of residual
-    # for marker channel, this depends on the method
+    # deviation -> for ladder channel, this is (z(rtime)-size)**2 or square of
+    # residual for marker channel, this depends on the method
     # method cubic-spline, this is avg of deviation of the nearest peaks
     # for local southern, this is (size1 - size2) ** 2
 

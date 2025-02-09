@@ -1,9 +1,8 @@
-
 import sys
 import os
-from fatools.lib.utils import cerr
-from fatools.lib.sqlmodels.handler_interface import base_sqlhandler
-from fatools.lib.sqlmodels2 import schema
+from fatoolsng.lib.utils import cerr
+from fatoolsng.lib.sqlmodels.handler_interface import base_sqlhandler
+from fatoolsng.lib.sqlmodels2 import schema
 
 
 class SQLHandler(base_sqlhandler):
@@ -31,6 +30,6 @@ class SQLHandler(base_sqlhandler):
     def initdb(self, create_table=True):
         if create_table:
             schema.Base.metadata.create_all(self.engine)
-        from fatools.lib.sqlmodels2.setup import setup
+        from fatoolsng.lib.sqlmodels2.setup import setup
         setup(self)
         cerr('Database at %s has been initialized.' % self.dbfile)

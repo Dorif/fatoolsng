@@ -154,50 +154,6 @@ def do_facmd(args, dbh=None):
         if args_arr[i] is not False:
             do_arr[i]
             executed += 1
-        """
-    if args.clear is not False:
-        do_clear(args, dbh)
-        executed += 1
-    if args.findpeaks is not False:
-        do_findpeaks(args, dbh)
-        executed += 1
-    if args.scan is not False:
-        do_scan(args, dbh)
-        executed += 1
-    if args.preannotate is not False:
-        do_preannotate(args, dbh)
-        executed += 1
-    if args.alignladder is not False:
-        do_alignladder(args, dbh)
-        executed += 1
-    if args.call is not False:
-        do_call(args, dbh)
-        executed += 1
-    if args.bin is not False:
-        do_bin(args, dbh)
-        executed += 1
-    if args.postannotate is not False:
-        do_postannotate(args, dbh)
-        executed += 1
-    if args.setallele is not False:
-        do_setallele(args, dbh)
-        executed += 1
-    if args.showladderpca is not False:
-        do_showladderpca(args, dbh)
-        executed += 1
-    if args.listassay is not False:
-        do_listassay(args, dbh)
-        executed += 1
-    if args.listpeaks is not False:
-        do_listpeaks(args, dbh)
-        executed += 1
-    if args.showtrace is not False:
-        do_showtrace(args, dbh)
-        executed += 1
-    if args.showz is not False:
-        do_showz(args, dbh)
-        executed += 1
-        """
     if executed:
         cerr('INFO - executed %d command(s)' % executed)
     else:
@@ -488,7 +444,8 @@ def do_showz(args, dbh):
     assay_list = get_assay_list(args, dbh)
 
     from matplotlib import pylab as plt
-    import numpy as np
+    from numpy import poly1d
+    from jax.numpy import linspace
 
     for (assay, sample_code) in assay_list:
         ladder_peaks = list(assay.ladder.alleles)
@@ -496,8 +453,8 @@ def do_showz(args, dbh):
 
         peak_pairs = [(x.rtime, x.size) for x in ladder_peaks]
 
-        x = np.linspace(peak_pairs[0][0], peak_pairs[-1][0] + 200, 100)
-        f = np.poly1d(z)
+        x = linspace(peak_pairs[0][0], peak_pairs[-1][0] + 200, 100)
+        f = poly1d(z)
         y = f(x)
 
         print(' => Z: ', z)

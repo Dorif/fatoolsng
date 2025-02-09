@@ -1,7 +1,9 @@
-import pandas, attr, yaml
+import pandas
+import attr
+from yaml import dump
 from jax.numpy import round, mean, percentile, median
-from fatools.lib.fautil.mixin import BinMixIn
-from fatools.lib.utils import cout, cerr
+from fatoolsng.lib.fautil.mixin import BinMixIn
+from fatoolsng.lib.utils import cout, cerr
 from collections import defaultdict
 # from IPython import embed
 
@@ -58,8 +60,7 @@ def do_optimize(args):
 
     if args.outfile:
         with open(args.outfile, 'w') as f:
-            yaml.dump({args.marker: {'label': args.marker, 'bins': tbin.bins}},
-                      f)
+            dump({args.marker: {'label': args.marker, 'bins': tbin.bins}}, f)
 
 
 class Bin(BinMixIn):
