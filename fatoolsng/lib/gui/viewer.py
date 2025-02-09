@@ -1,7 +1,6 @@
-
 import tkinter
 
-from fatools.lib.fautil.wavelen2rgb import wavelen2rgb
+from fatoolsng.lib.fautil.wavelen2rgb import wavelen2rgb
 
 
 class SimplePlot(tkinter.Canvas):
