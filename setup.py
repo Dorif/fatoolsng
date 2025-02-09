@@ -20,14 +20,14 @@ requires = [
     'peakutils',
     ]
 
-setup(name='fatools',
-      version='0.7',
-      description='fatools',
+setup(name='fatoolsng',
+      version='0.1',
+      description='fatoolsng',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
           "Programming Language :: Python", ],
-      author='Hidayat Trimarsanto',
-      author_email='anto@eijkman.go.id',
+      author='Alexandr Dorif',
+      author_email='dorif11@gmail.com',
       url='',
       keywords='dna fragment-analysis',
       packages=find_packages(),
@@ -35,8 +35,8 @@ setup(name='fatools',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="fatools",
+      test_suite="fatoolsng",
       entry_points="""\
       [console_scripts]
-      fatools = fatools.scripts.run:main
+      fatoolsng = fatoolsng.scripts.run:main
       """, )

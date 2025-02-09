@@ -1,14 +1,14 @@
 
-FATools - Fragment Analysis Tools
+FAToolsNG - Fragment Analysis Tools New Generation
 =================================
 
 
-FATools is a Python library and a collection of command line tools to process and
+FAToolsNG is a Python library and a collection of command line tools to process and
 analysis DNA fragments (STRs/microsatellites) on electropherograms from capillary
 sequencing machine assay, an activity also known as Fragment Analysis (FA).
 
 In short, this tool provides more or less similar function as ABI GeneMapper software
-in command line interface (sans GUI, but an assay viewer can be built using this
+in command line interface (without GUI, but an assay viewer can be built using this
 library).
 
 Features:
@@ -19,3 +19,5 @@ Features:
 - peak binning
 - peak annotation and filtering (for stutter, dye overlapping, and peak artifact)
 
+This project is a fork of FAtools project initiated by Hidayat Trimarosanto. Original
+project seems to be abandoned now.
