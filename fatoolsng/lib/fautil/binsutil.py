@@ -60,7 +60,7 @@ def do_optimize(args):
 
     if args.outfile:
         with open(args.outfile, 'w') as f:
-            yaml.safe_dump({args.marker: {'label': args.marker, 'bins': tbin.bins}}, f)
+            yaml.dump({args.marker: {'label': args.marker, 'bins': tbin.bins}}, f)
 
 
 class Bin(BinMixIn):
