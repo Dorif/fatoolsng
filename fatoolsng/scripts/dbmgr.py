@@ -1,6 +1,6 @@
 import sys
 import argparse
-import yaml
+from ruamel.yaml import YAML as yaml
 import csv
 import transaction
 import os
@@ -231,7 +231,6 @@ def do_initdb(args, dbh):
 def do_importpanel(args, dbh):
 
     panels = yaml.load(open(args.infile))
-
     for code, panel in panels.items():
         if panel['code'] != code:
             cerr('ERR: code for panel %s is not consistent!' % code)
@@ -418,7 +417,8 @@ def do_uploadfsa(args, dbh):
             continue
 
         # if len(row) < 3:
-        #    cerr('ERR - line %d only has %d item(s)' % (line_counter, len(row)))
+        #    cerr('ERR - line %d only has %d item(s)' % (line_counter,
+        #                                                len(row)))
 
         sample_code, fsa_filename, fsa_panel = r['SAMPLE'], r['FILENAME'],
         r['PANEL']
@@ -677,20 +677,19 @@ def do_exportpeaks(args, dbh):
 
     for (assay, sample_code) in assay_list:
         pass
-        # pass for now
-        # continue later
+        # pass for now, continue later
 
 
 def do_viewpeakcachedb(args, dbh):
 
-    from leveldb import LevelDB
+    from plyvel import DB
     from collections import defaultdict
 
-    ldb = LevelDB(args.peakcachedb, create_if_missing=False)
+    ldb = DB(args.peakcachedb, create_if_missing=False)
 
     batches = defaultdict(int)
 
-    for key in ldb.RangeIter(include_value=False):
+    for key in ldb.iterator(include_value=False):
         batch_code = bytes(key.split(b'|', 1)[0])
         batches[batch_code] += 1
 

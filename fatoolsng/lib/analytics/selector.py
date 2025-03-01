@@ -1,4 +1,4 @@
-import yaml
+from ruamel.yaml import YAML as yaml
 from itertools import cycle
 from fatoolsng.lib.analytics.sampleset import SampleSet, SampleSetContainer
 from fatoolsng.lib.const import peaktype

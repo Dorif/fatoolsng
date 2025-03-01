@@ -1,6 +1,6 @@
 import pandas
 import attr
-from yaml import dump
+from ruamel.yaml import YAML as yaml
 from jax.numpy import round, mean, percentile, median
 from fatoolsng.lib.fautil.mixin import BinMixIn
 from fatoolsng.lib.utils import cout, cerr
@@ -60,7 +60,7 @@ def do_optimize(args):
 
     if args.outfile:
         with open(args.outfile, 'w') as f:
-            dump({args.marker: {'label': args.marker, 'bins': tbin.bins}}, f)
+            yaml.safe_dump({args.marker: {'label': args.marker, 'bins': tbin.bins}}, f)
 
 
 class Bin(BinMixIn):

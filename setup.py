@@ -11,9 +11,9 @@ with open(os.path.join(here, 'CHANGES.md')) as f:
 requires = [
     'jax',
     'matplotlib',
-    'pyyaml',
+    'ruamel.yaml<0.18.0',
     'pandas',
-    'leveldb',
+    'plyvel',
     'attrs',
     'transaction',
     'sortedcontainers',

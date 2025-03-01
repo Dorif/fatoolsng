@@ -21,17 +21,15 @@ from fatoolsng.lib.fautil.mixin import (PanelMixIn, AssayMixIn, ChannelMixIn,
                                         SampleNoteMixIn, AssayNoteMixIn,
                                         ChannelNoteMixIn, AlleleSetNoteMixIn,
                                         PanelNoteMixIn, MarkerNoteMixIn)
-
 import os
 import io
-import yaml
+from ruamel.yaml import YAML as yaml
 from sys import exit
 from jax.numpy import save, load
 import copy
 import json
 
 # __all__ = ['get_base', 'get_dbsession', 'set_datalogger']
-
 # this is necessary for SQLite to use FOREIGN KEY support (as well as ON DELETE CASCADE)
 
 
@@ -283,7 +281,7 @@ class Panel(Base, PanelMixIn):
                 exit(1)
 
     def sync(self, session):
-        """ sync'ing is getting the object in the database and update with our content """
+# sync'ing is getting the object in the database and update with our content
         db_panel = Panel.search(self.code, session)
         db_panel.update(self)
         return db_panel
@@ -348,7 +346,7 @@ class Marker(Base, MarkerMixIn):
             self.related_to = related_marker
 
     def sync(self, session):
-        """ sync assume that the current instance is not attached to any session """
+# sync assume that the current instance is not attached to any session
         db_marker = Marker.search(marker.code, session=session)
         db_marker.update(self)
         return db_marker
@@ -461,9 +459,9 @@ class Assay(Base, AssayMixIn):
                                                  name='ladderchannel_fk'),
                        nullable=True)
 
-    # channels = relationship('Channel', primaryjoin="Assay.id == Channel.id", lazy='dynamic',
-    #                    post_update = True,
-    #                    backref = backref('assay', uselist=False))
+    # channels = relationship('Channel', primaryjoin="Assay.id == Channel.id",
+    #                         lazy='dynamic', post_update = True,
+    #                         backref = backref('assay', uselist=False))
 
     ladder = relationship('Channel', uselist=False,
                           primaryjoin="Assay.ladder_id == Channel.id")
@@ -682,7 +680,7 @@ class Allele(Base, AlleleMixIn):
     # deviation -> for ladder channel, this is (z(rtime)-size)**2 or square of residual
     # for marker channel, this depends on the method
     # method cubic-spline, this is avg of deviation of the nearest peaks
-    # for local southern, this is (size1 - size2) ** 2
+    # for local southern, this is (size1 - size2)**2
 
     height = Column(types.Float, nullable=False, default=-1)
     area = Column(types.Float, nullable=False, default=-1)
@@ -705,7 +703,7 @@ class Allele(Base, AlleleMixIn):
     w75rtime = Column(types.Integer, nullable=False, default=-1)
     lshared = Column(types.Boolean, nullable=False, default=False)
     rshared = Column(types.Boolean, nullable=False, default=False)
-    """ begin, end, width, symmetrical retention time of this peak and peak quality"""
+# begin, end, width, symmetrical retention time of this peak and peak quality
 
     qscore = Column(types.Float, nullable=False,
                     default=-1)  # calculated in preannotate()

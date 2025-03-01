@@ -182,8 +182,8 @@ def do_scan(args, dbh):
     assay_list = get_assay_list(args, dbh)
 
     if args.peakcachedb:
-        import leveldb
-        peakdb = leveldb.LevelDB(args.peakcachedb, create_if_missing=False)
+        from plyvel import DB
+        peakdb = DB(args.peakcachedb, create_if_missing=False)
     else:
         peakdb = None
 
@@ -306,7 +306,7 @@ def do_postannotate(args, dbh):
 
 def do_findpeaks(args, dbh):
 
-    import leveldb
+    from plyvel import DB
     from fatoolsng.lib import params
 
     cerr('Finding and caching peaks...')
@@ -318,7 +318,7 @@ def do_findpeaks(args, dbh):
     if args.peakcachedb == '-':
         peakdb = None
     else:
-        peakdb = leveldb.LevelDB(args.peakcachedb)
+        peakdb = DB(args.peakcachedb)
 
     scanning_parameter = params.Params()
     assay_list = get_assay_list(args, dbh)
@@ -545,7 +545,7 @@ def do_parallel_find_peaks(channel_list, peakdb):
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for (tag, peaks) in executor.map(find_peaks_p, channel_list):
             if peakdb:
-                peakdb.Put(tag.encode(), pickle.dumps(peaks))
+                peakdb.put(tag.encode(), pickle.dumps(peaks))
             else:
                 cout('== channel %s\n' % tag)
                 cout(str(peaks))

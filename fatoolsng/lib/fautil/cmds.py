@@ -1,10 +1,9 @@
 # provide commands for Fragment Analysis (FA)
-
 from fatoolsng.lib import params
 from fatoolsng.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity  # , cout
 from sys import exit
 import argparse
-import yaml
+from ruamel.yaml import YAML as yaml
 import csv
 import os
 from io import StringIO

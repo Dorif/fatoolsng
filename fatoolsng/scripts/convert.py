@@ -1,7 +1,6 @@
 import argparse
 import csv
 from collections import defaultdict
-
 from fatoolsng.lib.utils import cerr, cexit, get_dbhandler
 from fatoolsng.lib.fautil.traceio import read_abif_stream
 
@@ -14,32 +13,26 @@ def init_argparser(parser=None):
         p = parser
 
 # commands
-
     p.add_argument('--fsa2tab', default=False, action='store_true',
                    help='convert from FSA to TSV')
     p.add_argument('--genemapper2tab', default=False, action='store_true',
                    help='convert genemapper CSV to fatoolsng assay info TSV')
     p.add_argument('--checkfsa', default=False, action='store_true',
                    help='check FSA files')
-
 # options
-
     p.add_argument('--sqldb', default=False, help='SQLITE3 database filename')
     p.add_argument('--fsdb', default=False,
                    help='root directory for filesystem-based database')
     p.add_argument('--species', default=False, help='species for markers')
     p.add_argument('--fsadir', default=False,
                    help='root directory for FSA files')
-
 # mandatory options
-
     p.add_argument('infiles', nargs='+')
 
     return p
 
 
 def main(args):
-
     do_convert(args)
 
 

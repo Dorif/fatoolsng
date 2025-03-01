@@ -3,8 +3,7 @@
 # in facmd toolset
 
 import argparse
-import yaml
-
+from ruamel.yaml import YAML as yaml
 from fatoolsng.lib.analytics.query import Query, load_yaml
 from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler
 from fatoolsng.lib import params

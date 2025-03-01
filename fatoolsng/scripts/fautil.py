@@ -1,6 +1,5 @@
 import argparse
 import os
-
 from fatoolsng.lib.utils import cout, cerr, cexit
 
 

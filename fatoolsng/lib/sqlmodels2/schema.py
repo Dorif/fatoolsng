@@ -23,7 +23,7 @@ from fatoolsng.lib.fautil.mixin2 import (PanelMixIn, FSAMixIn, ChannelMixIn,
                                          PanelNoteMixIn, MarkerNoteMixIn)
 import os
 import io
-import yaml
+from ruamel.yaml import YAML as yaml
 import copy
 from sys import exit
 from jax.numpy import save, load

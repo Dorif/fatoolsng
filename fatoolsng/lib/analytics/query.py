@@ -1,4 +1,4 @@
-import yaml
+from ruamel.yaml import YAML as yaml
 from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.analytics.selector import Selector, Filter
 from fatoolsng.lib.analytics.analyticalset import get_analytical_sets
