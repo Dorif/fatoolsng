@@ -13,11 +13,12 @@ requires = [
     'matplotlib',
     'ruamel.yaml<0.18.0',
     'pandas',
-    'plyvel',
     'attrs',
     'transaction',
     'sortedcontainers',
     'peakutils',
+    'plyvel-win32; platform_system == \'Windows\'',
+    'plyvel; platform_system != \'Windows\'',
     ]
 
 setup(name='fatoolsng',
