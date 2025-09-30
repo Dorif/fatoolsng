@@ -191,7 +191,8 @@ def find_peaks(raw_data,  params, raw_peaks=None):
     return peaks
 
 
-# the methods below are operated with either channel data type or list of channels
+# the methods below are operated with either channel data type
+# or list of channels
 # channel.data -> smoothed, normalized trace
 # channel.new_allele() -> function to create & register new allele
 # channel.get_alleles() -> function to get all alleles
@@ -406,7 +407,8 @@ def preannotate_channels(channels, params):
                     channel.data[ertime] < channel_r.data[ertime] and
                     p.height < channel_r.data[p.rtime]):
 
-# check how much is the relative height of this particular peak
+                    # check how much is the relative height of
+                    # this particular peak
                     rel_height = p.height / channel_r.data[p.rtime]
                     if rel_height > 1.0:
                         continue
@@ -435,7 +437,8 @@ def preannotate_channels(channels, params):
                         p.qscore -= 0.10
                         continue
 
-                    if ((rel_height < params.overlap_height_threshold and -0.5 < o_sym < 0.5) or
+                    if ((rel_height < params.overlap_height_threshold and
+                         -0.5 < o_sym < 0.5) or
                         (o_ratio < 0.25 and -1.5 < o_sym < 1.5) or
                         (o_ratio < 0.75 and -0.5 < o_sym < 0.5)):
                         if p.type != peaktype.noise:
@@ -453,18 +456,19 @@ def preannotate_channels(channels, params):
 
         for idx in range(len(alleles)):
             allele = alleles[idx]
+
+            def _stutterchk(aX):
+                # detecting stutters
+                if (allele.rtime-aX.rtime < params.stutter_rtime_threshold and
+                    aX.height*params.stutter_height_threshold > allele.height):
+                    allele.type = peaktype.stutter
+                    allele.qscore -= 0.2
             if idx > 0:
                 allele_0 = alleles[idx-1]
-                if allele.rtime-allele_0.rtime < params.stutter_rtime_threshold:
-                    if allele_0.height*params.stutter_height_threshold > allele.height:
-                        allele.type = peaktype.stutter
-                        allele.qscore -= 0.2
+                _stutterchk(allele_0)
             if idx < len(alleles) - 1:
                 allele_1 = alleles[idx+1]
-                if allele_1.rtime-allele.rtime < params.stutter_rtime_threshold:
-                    if allele_1.height*params.stutter_height_threshold > allele.height:
-                        allele.type = peaktype.stutter
-                        allele.qscore -= 0.2
+                _stutterchk(allele_1)
 
 
 def size_peaks(channel, params, ladders, qcfunc=None):
@@ -748,12 +752,14 @@ def generate_scoring_function(strict_params, relax_params):
                 dp_rss_part = 1e-2 ** (1e-3 * delta_rss)
                 msg.append('RSS > %d' % (relax_params['max_rss']))
 
-# score based on how many peaks we might miss compared to minimum number of peaks
+# score based on how many peaks we might miss
+# compared to minimum number of peaks
             delta_peaks = relax_params['min_sizes'] - len(dp_peaks)
             if delta_peaks <= 0:
                 dp_peaks_part = 1
             else:
-                dp_peaks_part = max(0, -2*delta_peaks*relax_params['min_sizes']-1)
+                dp_peaks_part = max(0,
+                                    -2*delta_peaks*relax_params['min_sizes']-1)
                 msg.append('Missing peaks = %d' % delta_peaks)
 
             # total overall score
