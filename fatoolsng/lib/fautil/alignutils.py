@@ -1,27 +1,30 @@
+from __future__ import annotations
+
 from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.fautil.dpalign import dp
-from numpy import poly1d
+from numpy import poly1d, asarray as _np_asarray
 from jax.numpy import zeros, polyfit, linspace, log10
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 from math import sqrt, log, exp
+from numpy.typing import NDArray
 
 
 @dataclass
 class AlignResult:
-    score: Any
-    msg: Any
-    dpresult: Any
+    score: float
+    msg: str | None
+    dpresult: DPResult | None
     method: Any
-    initial_pairs: Any = None
+    initial_pairs: list | None = None
 
 
 @dataclass
 class DPResult:
-    dpscore: Any
-    rss: Any
-    z: Any
-    sized_peaks: Any
+    dpscore: float
+    rss: float
+    z: NDArray
+    sized_peaks: list
 
     @property
     def ztranspose(self):
@@ -38,23 +41,23 @@ class DPResult:
 
 @dataclass
 class ZResult:
-    z: Any
-    rss: Any
+    z: NDArray
+    rss: float
     f: Any
 
 
 class PeakPairs:
 
-    def __init__(self, peak_pairs):
+    def __init__(self, peak_pairs: list[tuple[int, float]]) -> None:
         self.pairs = peak_pairs
-        self.r2s = {}
-        self.s2r = {}
+        self.r2s: dict[int, float] = {}
+        self.s2r: dict[float, int] = {}
         for (rtime, size) in self.pairs:
             self.r2s[rtime] = size
             self.s2r[size] = rtime
 
 
-def estimate_z(x, y, degree=3):
+def estimate_z(x: list | NDArray, y: list | NDArray, degree: int = 3) -> ZResult:
     """ estimate z and rss
             x: peak rtime
             y: standard sizes
@@ -63,6 +66,7 @@ def estimate_z(x, y, degree=3):
         y ~ f(x) where f = poly1d(z)
         rss ~ SUM( (f(x) - y)**2 ) for all (x,y)
     """
+    x, y = _np_asarray(x, dtype=float), _np_asarray(y, dtype=float)
     z = polyfit(x, y, degree)
     p = poly1d(z)
     y_p = p(x)
@@ -71,7 +75,7 @@ def estimate_z(x, y, degree=3):
     return ZResult(z, rss, p)
 
 
-def generate_similarity(peaks):
+def generate_similarity(peaks: list) -> list[float]:
 
     rfus = [p.rfu for p in peaks]
 
@@ -87,7 +91,7 @@ def generate_similarity(peaks):
     return similarity
 
 
-def pair_sized_peaks(peaks, peak_pairs):
+def pair_sized_peaks(peaks: list, peak_pairs: list[tuple]) -> list[tuple]:
     """ translate (rtime, size) to (size, peak)
 
         return: [(size, peak), ...]
@@ -223,7 +227,7 @@ def plot(rtimes, sizes, z, peak_pairs):
     plt.show()
 
 
-def align_dp(rtimes, sizes, similarity, z, rss, order=3):
+def align_dp(rtimes: list, sizes: list, similarity: list, z: NDArray, rss: float, order: int = 3) -> DPResult:
     """ align ladders with peaks using dynamic programming (global alignment)
         return (dpscore, RSS, Z, ladder_aligned_peaks)
     """

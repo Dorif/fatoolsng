@@ -93,7 +93,7 @@ def do_analyze(args):
 
     from fatoolsng.lib.fautil.traceio import read_abif_stream
 #    from fatoolsng.lib.fautil.traceutils import separate_channels
-    from fatoolsng.lib.fsmodels.models import Assay, Marker, Panel
+    from fatoolsng.lib.fileio.models import FSA as Assay, Marker, Panel
     from fatoolsng.lib import params
 
     scanning_parameter = params.Params()

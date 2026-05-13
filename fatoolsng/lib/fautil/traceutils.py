@@ -2,19 +2,42 @@ from math import factorial
 from jax.numpy import (repeat, min, max, mean, median, std, linalg, abs,
                        maximum, linspace, hanning, r_, ones, sum, array,
                        concatenate, convolve)
-from numpy import mat
+from numpy import asmatrix as mat
 from dataclasses import dataclass
 from typing import Any
 from scipy.optimize import curve_fit
 from scipy.ndimage import white_tophat
-from scipy.signal import cwt, ricker, medfilt, savgol_filter
+from scipy.signal import medfilt, savgol_filter
 from scipy.signal import find_peaks as _scipy_find_peaks
-from numpy import asarray as _asarray, percentile as _percentile, absolute as _absolute
+from numpy import (asarray as _asarray, percentile as _percentile,
+                   absolute as _absolute, zeros as _zeros, convolve as _convolve,
+                   pi as _pi, exp as _np_exp, arange as _arange, sqrt as _np_sqrt)
+
+
+def _ricker(points, a):
+    """Ricker (Mexican hat) wavelet."""
+    A = 2 / (_np_sqrt(3 * a) * (_pi ** 0.25))
+    vec = _arange(points) - (points - 1.0) / 2
+    tsq = vec ** 2
+    wsq = a ** 2
+    return A * (1 - tsq / wsq) * _np_exp(-tsq / (2 * wsq))
+
+
+def _cwt(data, widths):
+    """Continuous wavelet transform using the Ricker wavelet."""
+    out = _zeros((len(widths), len(data)))
+    for i, w in enumerate(widths):
+        n = 10 * int(w)
+        if n > len(data):
+            n = len(data)
+        wav = _ricker(n, w)[::-1]
+        out[i] = _convolve(data, wav, mode='same')
+    return out
 
 
 def _cwt_find_peaks(vector, widths, min_snr=1):
-    mat = cwt(_asarray(vector, dtype=float), ricker, widths)
-    response = mat.max(axis=0)
+    cwt_matrix = _cwt(_asarray(vector, dtype=float), widths)
+    response = cwt_matrix.max(axis=0)
     noise = float(_percentile(_absolute(response), 10)) or 1.0
     peaks, _ = _scipy_find_peaks(response, height=min_snr * noise)
     return peaks
@@ -173,7 +196,7 @@ class TraceChannel:
 # return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth_baseline]
 def separate_channels(trace):
 
-    from fatools.lib.fautil.traceio import WAVELENGTH
+    from fatoolsng.lib.fautil.traceio import WAVELENGTH
 
     results = []
     for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:

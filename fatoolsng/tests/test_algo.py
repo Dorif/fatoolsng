@@ -1,5 +1,5 @@
 import pytest
-from fatoolsng.lib.fautil.algo2 import Peak, Channel
+from fatoolsng.lib.fautil.algo import Peak, Channel
 
 
 class TestPeak:

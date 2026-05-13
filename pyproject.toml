@@ -23,16 +23,24 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = [
+    "biopython>=1.58",
     "jax",
     "matplotlib",
+    "numpy",
     "ruamel.yaml<0.18.0",
     "pandas",
     "scipy",
+    "sqlalchemy",
     "transaction",
+    "zope.sqlalchemy",
     "sortedcontainers",
     "peakutils",
-    "plyvel-win32; platform_system == 'Windows'",
-    "plyvel; platform_system != 'Windows'",
+]
+
+[project.optional-dependencies]
+r-analysis = [
+    "rpy2",
+    "mdp",
 ]
 
 [project.scripts]

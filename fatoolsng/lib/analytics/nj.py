@@ -1,7 +1,7 @@
 # Neighbor-joining tree from distance matrix
 
 from subprocess import call
-from fatools.lib.utils import random_string
+from fatoolsng.lib.utils import random_string
 
 
 def plot_nj(distance_matrix, tmp_dir, fmt='pdf', label_callback=None,

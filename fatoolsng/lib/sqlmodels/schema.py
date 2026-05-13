@@ -4,7 +4,7 @@ from abc import ABCMeta
 
 class _DeclarativeABCMeta(DeclarativeMeta, ABCMeta):
     pass
-from sqlalchemy.orm import scoped_session, sessionmaker  # , mapper
+from sqlalchemy.orm import scoped_session, sessionmaker, mapper
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, create_engine, func
 from sqlalchemy import types, Column, ForeignKey, UniqueConstraint, Table
@@ -19,25 +19,23 @@ from sqlalchemy.orm.session import object_session
 # from sqlalchemy.sql.functions import current_timestamp
 from zope.sqlalchemy import ZopeTransactionExtension
 from fatoolsng.lib.utils import cerr
-from fatoolsng.lib.fautil.mixin import (PanelMixIn, AssayMixIn, ChannelMixIn,
+from fatoolsng.lib.fautil.mixin import (PanelMixIn, FSAMixIn, ChannelMixIn,
                                         MarkerMixIn, BinMixIn, AlleleSetMixIn,
                                         AlleleMixIn, SampleMixIn, BatchMixIn,
                                         NoteMixIn, BatchNoteMixIn,
-                                        SampleNoteMixIn, AssayNoteMixIn,
+                                        SampleNoteMixIn, FSANoteMixIn,
                                         ChannelNoteMixIn, AlleleSetNoteMixIn,
                                         PanelNoteMixIn, MarkerNoteMixIn)
 from os.path import abspath
 from io import BytesIO
 from ruamel.yaml import YAML as yaml
+from copy import deepcopy
 from sys import exit
 from jax.numpy import save, load
-from copy import deepcopy
-from json import dumps as json_dumps, loads as json_loads
-
 # __all__ = ['get_base', 'get_dbsession', 'set_datalogger']
+
+
 # this is necessary for SQLite to use FOREIGN KEY support (as well as ON DELETE CASCADE)
-
-
 @event.listens_for(Engine, 'connect')
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
@@ -77,6 +75,8 @@ def _generic_delete(cls, pkid, session):
 
 Base.delete = classmethod(_generic_delete)
 
+
+# JSONCol and YAMLCol are taken from Rhombus
 
 # create JSON column
 # XXX: may be more appropriate to create a dict-based object that will serialize to JSON?
@@ -160,7 +160,7 @@ class Batch(Base, BatchMixIn):
     __tablename__ = 'batches'
     id = Column(types.Integer, primary_key=True)
     code = Column(types.String(16), nullable=False, unique=True)
-    assay_provider = Column(types.String(32), nullable=False)
+    fsa_provider = Column(types.String(32), nullable=False)
     species = Column(types.String(16), nullable=False)
     description = Column(types.String(1024), nullable=False, default='')
     remark = deferred(Column(types.String(1024), nullable=True))
@@ -198,7 +198,7 @@ class Batch(Base, BatchMixIn):
 
     def get_marker(self, marker_code, species=None):
         session = object_session(self)
-        markers = None  #XXX: Fix me
+        markers = None  # XXX: Fix me
         raise NotImplementedError()
 
     @property
@@ -232,26 +232,24 @@ class Sample(Base, SampleMixIn):
                       nullable=False)
     int1 = Column(types.Integer, nullable=False, default=-1)  # custom usage
     int2 = Column(types.Integer, nullable=False, default=-1)  # custom usage
-    string1 = Column(types.String(16), nullable=False,
-                     default='')  # custom usage
-    string2 = Column(types.String(16), nullable=False,
-                     default='')  # custom usage
-    batch = relationship(Batch, uselist=False,
-                         backref=backref('samples', lazy='dynamic',
-                                         cascade='save-update,delete'))
+    string1 = Column(types.String(16), nullable=False, default='')  # custom usage
+    string2 = Column(types.String(16), nullable=False, default='')  # custom usage
+    batch = relationship(Batch, uselist=False, backref=backref('samples',
+                                                               lazy='dynamic',
+                                                               cascade='save-update,delete'))
     remark = deferred(Column(types.String(1024), nullable=True))
 
     __table_args__ = (UniqueConstraint('code', 'batch_id'),
                       UniqueConstraint('altcode', 'batch_id'))
 
-    def new_assay(self, raw_data, filename, status, panel=None):
-        assay = Assay(raw_data=raw_data, filename=filename)
+    def new_fsa(self, raw_data, filename, status, panel=None):
+        fsa = FSA(raw_data=raw_data, filename=filename)
         if panel is None:
             panel = Panel.search('undefined', object_session(self))
-        assay.panel = panel
-        assay.sample = self
-        assay.status = status
-        return assay
+        fsa.panel = panel
+        fsa.sample = self
+        fsa.status = status
+        return fsa
 
 
 class SampleNote(Base, SampleNoteMixIn):
@@ -275,7 +273,7 @@ class Panel(Base, PanelMixIn):
 
     def update(self, obj):
 
-        self._update(obj)
+        super().update(obj)
 
         # verify that each marker in data exists
         session = object_session(self) or self._dbh_session_
@@ -286,7 +284,7 @@ class Panel(Base, PanelMixIn):
                 exit(1)
 
     def sync(self, session):
-# sync'ing is getting the object in the database and update with our content
+        """ sync'ing is getting the object in the database and update with our content """
         db_panel = Panel.search(self.code, session)
         db_panel.update(self)
         return db_panel
@@ -325,7 +323,6 @@ class Marker(Base, MarkerMixIn):
     code = Column(types.String(64), nullable=False, unique=True)
     species = Column(types.String(32), nullable=False)
     repeats = Column(types.Integer, nullable=False, default=-1)
-
     min_size = Column(types.Integer, nullable=False, default=0)
     max_size = Column(types.Integer, nullable=False, default=0)
     """ range of allele size for this marker """
@@ -344,14 +341,14 @@ class Marker(Base, MarkerMixIn):
 
     def update(self, obj):
 
-        self._update(obj)
+        super().update(obj)
         if type(obj) is dict and 'related_to' in obj:
             related_marker = Marker.search(d['related_to'],
-                                           session=object_session(self) or self.__dbh_session)
+                                           session = object_session(self) or self.__dbh_session)
             self.related_to = related_marker
 
     def sync(self, session):
-# sync assume that the current instance is not attached to any session
+        """ sync assume that the current instance is not attached to any session """
         db_marker = Marker.search(marker.code, session=session)
         db_marker.update(self)
         return db_marker
@@ -437,9 +434,9 @@ class Bin(Base, BinMixIn):
             return None
 
 
-class Assay(Base, AssayMixIn):
+class FSA(Base, FSAMixIn):
 
-    __tablename__ = 'assays'
+    __tablename__ = 'fsas'
     id = Column(types.Integer, primary_key=True)
     filename = Column(types.String(128), nullable=False, index=True)
     runtime = Column(types.DateTime, nullable=False)
@@ -455,7 +452,7 @@ class Assay(Base, AssayMixIn):
                                                  ondelete='CASCADE'),
                        nullable=False)
     sample = relationship(Sample, uselist=False,
-                          backref=backref('assays', lazy='dynamic'))
+                          backref=backref('fsas', lazy='dynamic'))
 
     panel_id = Column(types.Integer, ForeignKey('panels.id'), nullable=False)
     panel = relationship(Panel, uselist=False)
@@ -464,12 +461,12 @@ class Assay(Base, AssayMixIn):
                                                  name='ladderchannel_fk'),
                        nullable=True)
 
-    # channels = relationship('Channel', primaryjoin="Assay.id == Channel.id",
-    #                         lazy='dynamic', post_update = True,
-    #                         backref = backref('assay', uselist=False))
+    # channels = relationship('Channel', primaryjoin = "Assay.id == Channel.id", lazy='dynamic',
+    #                    post_update = True,
+    #                    backref = backref('assay', uselist=False))
 
     ladder = relationship('Channel', uselist=False,
-                          primaryjoin="Assay.ladder_id == Channel.id")
+                          primaryjoin="FSA.ladder_id == Channel.id")
 
     status = Column(types.String(32), nullable=False)
     method = deferred(Column(types.String(16), nullable=False))
@@ -497,7 +494,7 @@ class Assay(Base, AssayMixIn):
                           status=status, median=median, mean=mean,
                           max_height=max_height, min_height=min_height,
                           std_dev=std_dev)
-        channel.assay = self
+        channel.fsa = self
         channel.marker = initial_marker
         channel.panel = initial_panel
 
@@ -510,13 +507,12 @@ class Assay(Base, AssayMixIn):
         return Channel.get(self.ladder_id, session)
 
 
-class AssayNote(Base, AssayNoteMixIn):
+class FSANote(Base, FSANoteMixIn):
 
-    __tablename__ = 'assaynotes'
+    __tablename__ = 'fsanotes'
     id = Column(types.Integer, primary_key=True)
-    assay_id = Column(types.Integer, ForeignKey('assays.id',
-                                                ondelete='CASCADE'),
-                      nullable=False)
+    fsa_id = Column(types.Integer, ForeignKey('fsas.id', ondelete='CASCADE'),
+                    nullable=False)
     note_id = Column(types.Integer, ForeignKey('notes.id', ondelete='CASCADE'),
                      nullable=False)
 
@@ -526,12 +522,10 @@ class Channel(Base, ChannelMixIn):
     __tablename__ = 'channels'
     id = Column(types.Integer, primary_key=True)
 
-    assay_id = Column(types.Integer, ForeignKey('assays.id',
-                                                ondelete='CASCADE'),
-                      nullable=False)
-    assay = relationship(Assay, uselist=False,
-                         primaryjoin=assay_id == Assay.id,
-                         backref=backref('channels', lazy='dynamic'))
+    fsa_id = Column(types.Integer, ForeignKey('fsas.id', ondelete='CASCADE'),
+                    nullable=False)
+    fsa = relationship(FSA, uselist=False, primaryjoin=fsa_id == FSA.id,
+                       backref=backref('channels', lazy='dynamic'))
 
     marker_id = Column(types.Integer, ForeignKey('markers.id'), nullable=False)
     marker = relationship(Marker, uselist=False,
@@ -541,19 +535,15 @@ class Channel(Base, ChannelMixIn):
 
     markers = relationship(Marker, secondary='channels_markers', viewonly=True)
 
-    raw_data = deferred(Column(NPArray, nullable=False))
-    """ raw data from channel as numpy array, can have empty array to accomodate
-        allele data from CSV uploading """
-
     status = Column(types.String(32), nullable=False)
 
     wavelen = Column(types.Integer, nullable=False, default=0)
-    median = Column(types.Integer, nullable=False, default=0)
-    mean = Column(types.Float, nullable=False, default=0.0)
-    std_dev = Column(types.Float, nullable=False, default=0.0)
-    max_height = Column(types.Integer, nullable=False, default=-1)
-    min_height = Column(types.Integer, nullable=False, default=-1)
     """ basic descriptive statistics for data"""
+
+    mma = Column(types.Float, nullable=False, default=-1)
+    mmb = Column(types.Float, nullable=False, default=-1)
+    p80 = Column(types.Integer, nullable=False, default=-1)
+    """ michaelis-menten variable a and b for assessment """
 
     data = deferred(Column(NPArray, nullable=False))
     """ data after smoothed using savitzky-golay algorithm and baseline correction
@@ -563,7 +553,7 @@ class Channel(Base, ChannelMixIn):
     remark = deferred(Column(types.String(1024), nullable=True))
 
     def new_alleleset(self, revision=-1):
-        return AlleleSet(channel=self, sample=self.assay.sample,
+        return AlleleSet(channel=self, sample=self.fsa.sample,
                          marker=self.marker)
 
     def clear(self):
@@ -587,11 +577,13 @@ class ChannelNote(Base, ChannelNoteMixIn):
                      nullable=False)
 
 
-channels_markers = Table(
-    'channels_markers', Base.metadata,
-    Column('channel_id', types.Integer, ForeignKey('channels.id')),
-    Column('marker_id', types.Integer, ForeignKey('markers.id')),
-    UniqueConstraint('channel_id', 'marker_id'))
+channels_markers = Table('channels_markers', Base.metadata,
+                         Column('channel_id', types.Integer,
+                                ForeignKey('channels.id')),
+                         Column('marker_id', types.Integer,
+                                ForeignKey('markers.id')),
+                         UniqueConstraint('channel_id',
+                                          'marker_id'))
 # unique compound (channel_id, marker_id)
 
 
@@ -675,25 +667,26 @@ class Allele(Base, AlleleMixIn):
     abin = Column(types.Integer, nullable=False, default=-1)    # adjusted bin
     asize = Column(types.Float, nullable=False, default=-1)     # adjusted size
     adelta = Column(types.Float, nullable=False,
-                    default=-1)  # adjusted delta, abs(abin - asize)
+                    default=-1)  # adjusted delta, abs(abin-asize)
     aheight = Column(types.Float, nullable=False,
                      default=-1)  # adjusted height
 
     bin = Column(types.Integer, nullable=False, default=-1)
     size = Column(types.Float, nullable=False, default=-1)
     deviation = Column(types.Float, nullable=False, default=-1)
-    # deviation -> for ladder channel, this is (z(rtime)-size)**2 or square of residual
-    # for marker channel, this depends on the method
+    # deviation -> for ladder channel, this is (z(rtime)-size)**2 or square of
+    # residual for marker channel, this depends on the method
     # method cubic-spline, this is avg of deviation of the nearest peaks
-    # for local southern, this is (size1 - size2)**2
+    # for local southern, this is (size1 - size2) ** 2
 
     height = Column(types.Float, nullable=False, default=-1)
     area = Column(types.Float, nullable=False, default=-1)
     rtime = Column(types.Integer, nullable=False, default=-1)
     delta = Column(types.Float, nullable=False,
                    default=-1)  # bin - actual size
-    beta = Column(types.Float, nullable=False, default=-1)  # area / height
-    theta = Column(types.Float, nullable=False, default=-1)  # height / width
+    beta = Column(types.Float, nullable=False, default=-1)      # area / height
+    theta = Column(types.Float, nullable=False,
+                   default=-1)  # height / width
 
     type = Column(types.String(32), nullable=False)
     method = Column(types.String(32), nullable=False)   # binning method
@@ -708,12 +701,12 @@ class Allele(Base, AlleleMixIn):
     w75rtime = Column(types.Integer, nullable=False, default=-1)
     lshared = Column(types.Boolean, nullable=False, default=False)
     rshared = Column(types.Boolean, nullable=False, default=False)
-# begin, end, width, symmetrical retention time of this peak and peak quality
+    """ begin, end, width, symmetrical retention time of this peak and peak quality"""
 
     qscore = Column(types.Float, nullable=False,
-                    default=-1)  # calculated in preannotate()
+                    default=-1)    # calculated in preannotate()
     qcall = Column(types.Float, nullable=False,
-                   default=-1)  # calculated in call()
+                   default=-1)     # calculated in call()
 
     @property
     def channel(self):

@@ -1,6 +1,6 @@
 # provide commands for Fragment Analysis (FA)
 from fatoolsng.lib import params
-from fatoolsng.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity  # , cout
+from fatoolsng.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity, get_dbhandler  # , cout
 from sys import exit
 from argparse import ArgumentParser
 from ruamel.yaml import YAML as yaml
@@ -8,6 +8,7 @@ from csv import DictReader
 from os.path import join, expanduser, exists
 from os import makedirs
 from io import StringIO
+from transaction import manager as transaction_manager
 
 
 def init_argparser(parser=None):
@@ -113,8 +114,8 @@ def main(args):
     cerr(f'I: obtained {len(fsa_list)} FSA')
 
     if args.commit:
-        with transaction.manager:
-            do_facmd(args, fsa_list, dbh)
+        with transaction_manager:
+            do_facmds(args, fsa_list, dbh)
             cerr('** COMMIT to database **')
     elif dbh:
         cerr('WARNING ** running without database COMMIT! All changes will be discarded!')
@@ -143,7 +144,7 @@ def do_facmds(args, fsa_list, dbh=None):
     if args.plot or args.split_plot or args.ladder_plot:
         do_plot(args, fsa_list, dbh)
         executed += 1
-    if args.dendogram:
+    if args.gram:
         do_dendogram(args, fsa_list, dbh)
         executed += 1
 

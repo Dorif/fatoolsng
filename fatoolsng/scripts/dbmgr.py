@@ -20,8 +20,6 @@ def init_argparser(parser=None):
 
     p.add_argument('--sqldb', default=False, help='Sqlite3 database filename')
 
-    p.add_argument('--schema', default=1, type=int, help='SQL schema version')
-
     p.add_argument('--fsdb', default=False,
                    help='directory for filesystem-based database')
 
@@ -666,10 +664,10 @@ def do_exportpeaks(args, dbh):
 
 def do_viewpeakcachedb(args, dbh):
 
-    from plyvel import DB
+    from fatoolsng.lib.fautil.peakcache import PeakCache
     from collections import defaultdict
 
-    ldb = DB(args.peakcachedb, create_if_missing=False)
+    ldb = PeakCache(args.peakcachedb, create_if_missing=False)
 
     batches = defaultdict(int)
 

@@ -1,627 +1,296 @@
-from numpy import poly1d
-from jax.numpy import median, percentile, mean, sum, polyfit, sort
-from math import log, log2
-# from scipy.optimize import curve_fit, leastsq
-from scipy.interpolate import UnivariateSpline
-from fatoolsng.lib.fautil.traceutils import _cwt_find_peaks
-from fatoolsng.lib.const import peaktype, binningmethod, allelemethod
-# from fatoolsng.lib.fautil.dpalign import estimate_z, align_peaks, plot_z
-from fatoolsng.lib.utils import cerr, cverr  # , cout
-import fatoolsng.lib.fautil.peakalign as pa
+from __future__ import annotations
 
+from jax.numpy import polyfit, linspace, repeat
+from numpy import poly1d  # , exp
+from jax.numpy import sum, append, insert, maximum, array, percentile
+from math import log2
+
+from fatoolsng.lib.utils import cerr, cverr, is_verbosity
+from fatoolsng.lib import const
+from fatoolsng.lib.fautil.hcalign import align_hc
+from fatoolsng.lib.fautil.gmalign import align_gm, align_sh, align_de
+from fatoolsng.lib.fautil.pmalign import align_pm
+from fatoolsng.lib.fautil.traceio import WAVELENGTH
+
+from scipy.ndimage import white_tophat
+from scipy.signal import medfilt, savgol_filter
+from scipy.optimize import curve_fit
+from peakutils import indexes
+from matplotlib import pyplot as plt
 from sortedcontainers import SortedListWithKey
 
-from pickle import loads as pickle_loads  # , pprint
-# from matplotlib import pylab as plt
-# from bisect import bisect_left
+
+from dataclasses import dataclass, field
+from typing import Any, Callable
+from numpy.typing import NDArray
+
+from fatoolsng.lib.fautil.alignutils import AlignResult, estimate_z
 
 
-def find_raw_peaks(raw_data, params):
+@dataclass(repr=False)
+class Peak:
+    rtime: int = -1
+    rfu: int = -1
+    area: int = -1
+    brtime: int = -1
+    ertime: int = -1
+    srtime: float = -1
+    beta: float = -1
+    theta: float = -1
+    omega: int = -1
 
-    max_height = max(raw_data)
-    width_ratio = max(1, round(log(max_height/params.width_ratio)))
-    widths = params.widths
+    size: float = -1
+    bin: int = -1
 
-    if params.method == 'cwt':
-        # from jax.scipy.signal import find_peaks_cwt
-        indices = _cwt_find_peaks(raw_data, widths, min_snr=params.min_snr)
-        # cerr('find_peaks_cwt() found %d peaks' % len(indices))
-        # pprint.pprint(indices)
+    def __repr__(self):
+        return f"<P: {self.rtime:4d} | {self.rfu:4d} | {self.area:5d} | {self.ertime - self.brtime:2d} | {self.srtime:+3.2f} | b {self.beta:4.1f} | t {self.theta:4.2f} | o {self.omega:3d}>"
 
-    elif params.method == 'relmax':
-        indice_set = []
-        from scipy.signal import argrelmax
-        for i in (params.widths * width_ratio):
-            indice_set.append(argrelmax(raw_data, order=i+5)[0])
-        # get consensus
-        indices = filter_by_snr(get_consensus_indices(indice_set),
-                                raw_data, params.min_snr*3.5)
-        # print('indices => %d' % len(indices))
-        # pprint.pprint(indices)
 
-    elif params.method == 'mlpy':
-        indice_set = []
-        from mlpy import findpeaks_win
-        for i in params.widths:
-            indice_set.append(findpeaks_win(raw_data, span=i))
-        # get consensus
-        indices = filter_by_snr(get_consensus_indices(indice_set),
-                                raw_data, params.min_snr)
+@dataclass
+class Channel:
+    data: NDArray
+    marker: Any
+    alleles: list[Any] = field(default_factory=list)
 
-    elif params.method == 'pd':
-        from peakutils import indexes
-        indices = indexes(raw_data, 1e-5, 10)
-        # pprint.pprint(indices)
-        cverr(3, f'indice size: {len(indices)}')
-        cverr(3, f'indices => {repr(indices)}')
+    fsa: Any | None = None
 
+    def scan(self, params, offset=0):
+
+        if self.is_ladder():
+            alleles = scan_peaks(self, params.ladder)
+        else:
+            alleles = scan_peaks(self, params.ladder, offset)
+
+        cverr(1, f"# scanning {self.marker}: {len(alleles)} peak(s)")
+
+        return alleles
+
+    def align(self, params):
+
+        if not self.is_ladder():
+            raise RuntimeError('ERR: cannot align non-ladder channel')
+
+        ladders, qcfunc = self.fsa.get_ladder_parameter()
+
+        result = align_peaks(self, params.ladder, ladders, qcfunc)
+
+
+def scan_peaks(channel: Any, params: Any, offset: int = 0) -> list:
+    """
+    """
+    cerr(f'I: scanning peaks for: {channel}')
+
+    # check if channel is ladder channel, and
+    # adjust expected_peak_number accordingly
+    expected_peak_number = params.expected_peak_number
+    if channel.is_ladder():
+        expected_peak_number = len(channel.fsa.panel.get_ladder()['sizes'])
     else:
-        raise RuntimeError(f'unknown peak finding method: {params.method}')
+        # otherwise, calculate min_rtime for offset
+        if len(channel.fsa.ztranspose) <= 0:
+            raise RuntimeError('ztranspose has not been calculated!')
+        min_size = channel.marker.min_size
+        f = poly1d(channel.fsa.ztranspose)
+        offset = int(round(f(min_size)))
+        channel.offset = offset
 
-    if indices is None or len(indices) == 0:
+    initial_peaks = find_peaks(channel.data, params, offset,
+                               expected_peak_number)
+
+    # create alleles based on these peaks
+    alleles = []
+    for p in initial_peaks:
+        allele = channel.Allele(rtime=p.rtime, rfu=p.rfu, area=p.area,
+                                brtime=p.brtime, ertime=p.ertime,
+                                wrtime=p.wrtime, srtime=p.srtime, beta=p.beta,
+                                theta=p.theta, omega=p.omega,)
+        allele.type = const.peaktype.scanned
+        allele.method = const.binningmethod.notavailable
+        allele.marker = channel.marker
+        channel.add_allele(allele)
+        alleles.append(allele)
+
+    channel.status = const.channelstatus.scanned
+    return alleles
+
+
+def align_peaks(channel: Any, params: Any, ladder: dict, anchor_pairs: list | None = None) -> AlignResult:
+    """
+    returns (score, rss, dp, aligned_peak_number)
+    """
+
+    alleles = channel.get_alleles()
+
+    # reset all peaks first
+    for p in channel.get_alleles():
+        p.size = -1
+        p.type = const.peaktype.scanned
+
+#    anchor_pairs = pairs
+
+    alignresult = align_ladder(alleles, ladder, anchor_pairs)
+
+    f = poly1d(alignresult.dpresult.z)
+    for (size, allele) in alignresult.dpresult.sized_peaks:
+        allele.dev = abs(f(allele.rtime) - size)
+        allele.size = size
+        allele.type = const.peaktype.ladder
+
+    return alignresult
+
+
+def align_ladder(alleles, ladder, anchor_pairs):
+
+    if anchor_pairs:
+        return align_pm(alleles, ladder, anchor_pairs)
+
+    if len(alleles) <= len(ladder['sizes']) + 5:
+        result = align_hc(alleles, ladder)
+
+        if result.score > 0.9:
+            return result
+
+    return align_pm(alleles, ladder)
+
+    # end of function,
+
+    if result.initial_pairs:
+        result = align_gm(alleles, ladder, result.initial_pairs)
+        if result.score > 0.75:
+            return result
+
+    result = align_sh(alleles, ladder)
+    if result.score > 0.75:
+        return result
+
+    # perform differential evolution
+    return align_de(alleles, ladder)
+
+    raise RuntimeError
+
+    result = hclust_align(alleles, ladder)
+
+    # add relevant info to peaks
+    aligned_peaks = result[2][3]
+    f = poly1d(result[2][2])
+    for (size, p) in aligned_peaks:
+        p.dev = abs(f(p.rtime) - size)
+        p.size = size
+    z, rss = estimate_z([p[1].rtime for p in aligned_peaks],
+                        [p[0] for p in aligned_peaks], 3)
+    print('>>> RSS:', rss)
+#    import pprint; pprint.pprint( aligned_peaks )
+    return result
+
+
+def call_peaks(channel: Any, params: Any, func: Callable, min_rtime: int, max_rtime: int) -> None:
+
+    for allele in channel.alleles:
+        if not min_rtime < allele.rtime < max_rtime:
+            continue
+        allele.size, allele.dev, allele.qcall, method = func(allele.rtime)
+        if allele.type == const.peaktype.scanned:
+            allele.type = const.peaktype.called
+
+# helper functions
+
+
+def find_raw_peaks(data, params, offset, expected_peak_number=0):
+    """
+    params.min_dist
+    params.norm_thres
+    params.min_rfu
+    params.max_peak_number
+    """
+#    print("expected:", expected_peak_number)
+#   cut and pad data to overcome peaks at the end of array
+    obs_data = append(data[offset:], [0, 0, 0])
+    if False:  # expected_peak_number:
+        min_dist = params.min_dist
+        indices = []
+        norm_threshold = params.norm_thres
+        expected_peak_number = expected_peak_number * 1.8
+        while len(indices) <= expected_peak_number and norm_threshold > 1e-7:
+            indices = indexes(obs_data, norm_threshold, min_dist)
+            print(len(indices), norm_threshold)
+            norm_threshold *= 0.5
+    elif False:
+        indices = indexes(obs_data, params.norm_thres, params.min_dist)
+
+    indices = indexes(obs_data, 1e-7, params.min_dist)
+    cverr(5, f'## indices: {str(indices)}')
+    cverr(3, f'## raw indices: {len(indices)}')
+
+    if len(indices) == 0:
         return []
 
-    # filter for absolute heights within proximity
+    # normalize indices
+    if offset > 0:
+        indices = indices + offset
 
-    # special cases for pd (peak detect) method:
+#   filter peaks by minimum rfu, and by maximum peak number after sorted by rfu
+    peaks = [Peak(int(i), int(data[i])) for i in indices
+             if data[i] >= params.min_rfu and params.min_rtime < i]
+#    peaks = sorted(peaks, key = lambda x: x.rfu )[:params.max_peak_number * 2]
 
-    if params.method == 'pd':
-        return [(int(i), int(raw_data[i]))
-                for i in indices if raw_data[i] > params.min_height and
-                params.min_rtime < i < params.max_rtime]
+#    import pprint; pprint.pprint(peaks)
+#    print('======')
 
-    raw_peaks = []
-    max_len = len(raw_data)
-    for idx in indices:
+    if expected_peak_number:
+        peaks.sort(key=lambda x: x.rfu, reverse=True)
+        peaks = peaks[: round(expected_peak_number * 2)]
+        peaks.sort(key=lambda x: x.rtime)
 
-        if not (params.min_rtime < idx < params.max_rtime):
-            continue
-
-        height, index = max([(raw_data[i], i)
-                             for i in range(max(0, idx-3),
-                                            min(max_len,
-                                                idx+3))])
-
-        if height < params.min_height:
-            continue
-        if (index, height) in raw_peaks:
-            continue
-        raw_peaks.append((index, height))
-
-    return raw_peaks
-
-
-def find_peaks(raw_data,  params, raw_peaks=None):
-    """
-    find all peaks based on the criteria defined in params, and assign as
-    peak-scanned raw_data is baseline-normalized & smoothed trace
-
-    parameters used are:
-    method: 'cwt' or 'mlpy'
-    widths: window size for peak scanning
-    cwt_min_snr:
-    min_height:
-    min_relative_ratio:
-    max_relative_ratio:
-    min_height_ratio:
-    max_peak_number:
-
-    """
-
-    if raw_peaks is None:
-        raw_peaks = find_raw_peaks(raw_data, params)
-
-    # check for any peaks
-    if not raw_peaks:
-        return raw_peaks
-
-    # only retain 2 * max_peak_number and discard the rest
-    raw_peaks = sorted(raw_peaks, key=lambda x: x[1],
-                       reverse=True)[:params.max_peak_number*2]
-
-    if params.min_relative_ratio > 0 or params.max_relative_ratio > 0:
-        med = median(list(p[1] for p in raw_peaks))
-        if params.min_relative_ratio > 0:
-            median_min = med * params.min_relative_ratio
-            raw_peaks = [p for p in raw_peaks if p[1] > median_min]
-        if params.max_relative_ratio > 0:
-            median_max = med * params.max_relative_ratio
-            raw_peaks = [p for p in raw_peaks if p[1] < median_max]
-
-    if not raw_peaks:
-        return raw_peaks
-
-    # filter for minimum height ratio
-
-    if params.min_height_ratio > 0:
-        min_height = max(list(p[1] for p in raw_peaks))*params.min_height_ratio
-        raw_peaks = [p for p in raw_peaks if p[1] > min_height]
-
-    # calculate area
-
-    (q50, q75) = percentile(raw_data, [50, 75])
-    peaks = []
-    for (peak, height) in raw_peaks:
-        area, brtime, ertime, srtime, ls, rs = calculate_area(raw_data, peak,
-                                                              5e-2, q50)
-        wrtime = ertime - brtime
-        if wrtime < 3:
-            continue
-        beta = area / height
-        theta = height / wrtime
-        if height >= 25 and beta * theta < 6:  # 10:
-            continue
-        if height < 25 and beta * theta < 3:  # 6:
-            continue
-        peaks.append((peak, height, area, brtime, ertime, srtime, beta, theta))
-
-    peaks.sort()
-    cverr(3, f'peaks stage 1 size: {len(peaks)}')
-    cverr(3, f'peaks stage 1: {repr(peaks)}')
-
-    non_artifact_peaks = []
-
-    for idx in range(len(peaks)):
-        peak = peaks[idx]
-
-        if idx > 0:
-            prev_p = peaks[idx-1]
-            if (peak[3]-prev_p[4] < 5 and
-                peak[1] < params.artifact_ratio*prev_p[1]):
-                # we are artifact, just skip
-                continue
-        if idx < len(peaks)-1:
-            next_p = peaks[idx+1]
-            if (next_p[3]-peak[4] < 5 and
-                peak[1] < params.artifact_ratio*next_p[1]):
-                # we are another artifact, just skip
-                continue
-
-        non_artifact_peaks.append(peak)
-
-    cverr(3, f'max_peak_number: {params.max_peak_number}')
-
-    sorted_peaks = sorted(non_artifact_peaks, key=lambda x: (x[1],
-                                                             x[6] * x[7]),
-                          reverse=True)[:params.max_peak_number]
-    peaks = sorted(sorted_peaks)
-    cverr(3, f'peaks stage 3 size: {len(peaks)}')
-    cverr(3, f'peaks stage 3: {repr(peaks)}')
+    cverr(3, f'## peak above min rfu: {len(peaks)}')
 
     return peaks
 
 
-# the methods below are operated with either channel data type
-# or list of channels
-# channel.data -> smoothed, normalized trace
-# channel.new_allele() -> function to create & register new allele
-# channel.get_alleles() -> function to get all alleles
-# allele datatype
+def find_peaks(data, params, offset=0, expected_peak_number=0):
 
+    peaks = find_raw_peaks(data, params, offset, expected_peak_number)
 
-def scan_peaks(channel, params, peakdb):
-    """
-    scan for peaks based on the criteria defined in params, set as
-    peak-scanned, and prepare the channel data structure
-    """
+    # check for any peaks
+    if not peaks:
+        return peaks
 
-    if peakdb:
-        raw_peaks = pickle_loads(peakdb.Get(channel.tag().encode()))
+    # measure peaks parameters
+    measure_peaks(peaks, data, offset)
+
+#    import pprint; pprint.pprint(peaks)
+
+#    filter artefact peaks if expected peak number is bigger
+    if expected_peak_number > 10:
+        non_artifact_peaks = filter_for_artifact(peaks, params,
+                                                 expected_peak_number)
     else:
-        raw_peaks = None
+        non_artifact_peaks = peaks
 
-    initial_peaks = find_peaks(channel.data, params, raw_peaks)
-    # peaks = ( rtime, height, area, brtime, ertime )
-    # cerr('DEBUG - initial peaks: %d' % len(initial_peaks))
-
-    cverr(3, f'initial peaks: {len(initial_peaks)}')
-
-    # perform futher cleaning for ladder channels
+    # for ladder, special filtering is applied
     if params.expected_peak_number:
-        epn = params.expected_peak_number
-        peak_qualities = sorted([(p[6] * p[7], p) for p in initial_peaks],
-                                reverse=True)
-        low_scores = [q[0] for q in peak_qualities[round(epn/3):round(epn*1.5)]]
-        avg_low_score = sum(low_scores) / len(low_scores)
-        ratio_low_score = (avg_low_score - low_scores[-1])/low_scores[-1]
-        if avg_low_score < 75:
-            # questionable quality, please use more peaks
-            score_threshold = 4  # avg_low_score * 0.1
-            height_threshold = 6
-        else:
-            if avg_low_score - low_scores[-1] > low_scores[-1]:
-                # peaks' height are likely not to evenly distributed
-                score_threshold = max(low_scores[-1] * 0.90, 4)
-            else:
-                score_threshold = avg_low_score * 0.25
-            height_threshold = 10
-            cverr(3, f'using score threshold: {score_threshold:f}')
-            cverr(3, f'using height_threshold: {height_threshold}')
-        peaks = [q for q in peak_qualities
-                 if q[0] > score_threshold and q[1][1] > height_threshold]
-        cverr(3, f'after peak quality filtering: {len(peaks)}')
-        if len(peaks) > 1.5 * params.expected_peak_number:
-            # try to remove peaks further
-            saved_peaks = peaks
-            while (len(peaks)-len(saved_peaks) < 0.30*len(peaks) and
-                   height_threshold < 20):
-                height_threshold += 1
-                saved_peaks = [q for q in saved_peaks
-                               if q[0] > height_threshold]
-            peaks = saved_peaks
-            cverr(3, f'after reducing peaks number by height: {len(peaks)}')
-        peaks = sorted([q[1] for q in peaks])
-
+        peaks = filter_for_ladder(non_artifact_peaks, params)
     else:
-        peaks = initial_peaks
+        peaks = non_artifact_peaks
 
-    # create alleles based on these peaks
-    alleles = []
-    for peak in peaks:
-        (rtime, height, area, brtime, ertime, srtime, beta, theta) = peak
-        wrtime = ertime - brtime
-        height = round(height)
-        allele = channel.new_allele(rtime=rtime, height=height, area=area,
-                                    brtime=brtime, ertime=ertime,
-                                    wrtime=wrtime, srtime=srtime,
-                                    beta=beta, theta=theta)
-        allele.type = peaktype.scanned
-        allele.method = binningmethod.notavailable
-        allele.marker = channel.marker
-        alleles.append(allele)
-
-    return alleles
+    return peaks
 
 
-def preannotate_channels(channels, params):
-    """
-    pre-annotate peaks as peak-scanned/peak-broad/peak-stutter/peak-overlap
-    based on criteria defined in params
-    """
+def measure_peaks(peaks, data, offset=0):
 
-    # peak_1 is overlap of peak_2 if
-    #   brtime2 < ertime1 and ertime1 < ertime2
-    #   and height1 at rtime1 is a_fraction of height2 at rtime1 and
-    #   height1 at rtime2 is a_fraction of height2 at rtime2.
-
-    # peak is broad if beta > beta_broad_threshold
-
-    channel_peaks = [(list(channel.alleles),
-                      median(channel.data)) for channel in channels]
-
-    # reset all peak type, score the peaks and set the peak type to peak-noise,
-    # peak-broad
-
-    # collect beta * theta first, and used beta * theta as descriptor for noise
-    # also if height at either brtime or ertime is higher than 50% at rtime,
-    # it is likely a noise
-
-    for (peaks, med_baseline) in channel_peaks:
-
-        if len(peaks) == 0:
-            continue
-
-        beta_theta = sorted([p.beta * p.theta for p in peaks])
-        sampled_beta_theta = beta_theta[2:len(beta_theta)-2]
-        if len(sampled_beta_theta) == 0:
-            sampled_beta_theta = beta_theta
-        avg_beta_theta = sum(sampled_beta_theta) / len(sampled_beta_theta)
-
-        for p in peaks:
-            p.type = peaktype.scanned
-            p.size = -1
-            p.bin = -1
-
-            peak_beta_theta = p.beta * p.theta
-            score = 1.0
-
-            # extreme noise
-
-            if p.height < 2 * med_baseline:
-                p.qscore = 0.25
-                p.type = peaktype.noise
-                continue
-
-            if p.wrtime < 6 or (p.wrtime < 10 and
-                                peak_beta_theta < 0.275*avg_beta_theta):
-                p.qscore = 0.25
-                p.type = peaktype.noise
-                continue
-
-            # moderately noise
-
-            if peak_beta_theta < avg_beta_theta/3:
-                halfheight = p.height/2
-                if (p.channel.data[p.brtime] > halfheight or
-                    p.channel.data[p.ertime] > halfheight):
-                    p.qscore = 0.25
-                    p.type = peaktype.noise
-                    continue
-                score -= 0.15
-
-            score = 1.0
-            if p.beta > params.max_beta:
-                p.type = peaktype.broad
-                score -= 0.20
-            elif p.beta < 5:
-                score -= 0.20
-
-            # check theta
-            if p.theta < 4:
-                # perhaps an artifact
-                score -= 0.20
-
-            # penalty by height
-            if p.height < 75:
-                # decrease the score
-                score -= 0.1
-            if p.height < 50:
-                # decrease even further
-                score -= 0.1
-
-            # penalty by symmetrics
-            if not (-1.32 < p.srtime < 1.32):
-                score -= 0.1
-
-            p.qscore = score
-            if p.qscore < 0.5 and p.type == peaktype.scanned:
-                p.type = peaktype.noise
-
-            if p.qscore < 0:
-                p.qscore = 0.0  # reset to zero
-
-    # checking overlaps against channel !
-
-    for channel in channels:
-        for channel_r in channels:
-            if channel == channel_r:
-                continue
-
-            for p in channel.alleles:
-                if p.type == peaktype.noise:
-                    continue
-
-                if p.ertime - p.brtime < 3:
-                    brtime = p.brtime
-                    ertime = p.ertime
-                elif p.ertime - p.brtime < 6:
-                    brtime = p.brtime + 1
-                    ertime = p.ertime - 1
-                else:
-                    brtime = p.brtime + 3
-                    ertime = p.ertime - 3
-
-                if brtime > p.rtime:
-                    brtime = p.rtime
-                if ertime < p.rtime:
-                    ertime = p.rtime
-
-                brtime = max(0, brtime)
-                ertime = min(len(channel.data), len(channel_r.data), ertime)
-
-                # cerr('checking %d | %s with channel %s' % (p.rtime,
-                #                                            channel.dye,
-                #                                            channel_r.dye))
-
-                if (channel.data[brtime] < channel_r.data[brtime] and
-                    channel.data[ertime] < channel_r.data[ertime] and
-                    p.height < channel_r.data[p.rtime]):
-
-                    # check how much is the relative height of
-                    # this particular peak
-                    rel_height = p.height / channel_r.data[p.rtime]
-                    if rel_height > 1.0:
-                        continue
-
-                    (o_state, o_ratio, o_sym) = calc_overlap_ratio(channel.data,
-                                                                   channel_r.data,
-                                                                   p.rtime,
-                                                                   brtime,
-                                                                   ertime)
-
-                    # if not really overlap, just continue reiteration
-                    if not o_state:
-                        continue
-
-                    print(f'peak: {p.rtime} | {p.channel.dye} | {p.type} <> {rel_height:f} | {o_ratio:f} | {o_sym:f}')
-                    if rel_height < 0.15:
-                        if p.type != peaktype.noise:
-                            p.type = peaktype.overlap
-                            print(f'peak: {p.rtime} | {p.channel.dye} -> overlap')
-                        p.qscore -= 0.10
-                        continue
-
-                    if ((rel_height < params.overlap_height_threshold and
-                         -0.5 < o_sym < 0.5) or
-                        (o_ratio < 0.25 and -1.5 < o_sym < 1.5) or
-                        (o_ratio < 0.75 and -0.5 < o_sym < 0.5)):
-                        if p.type != peaktype.noise:
-                            p.type = peaktype.overlap
-                            print(f'peak: {p.rtime} | {p.channel.dye} -> overlap')
-                        p.qscore -= 0.10
-                        continue
-
-    # checking for stutter peaks based on minimum rtime & rfu
-
-    for (peaks, med_baseline) in channel_peaks:
-        alleles = sorted([p for p in peaks],
-                         key=lambda x: x.rtime)
-
-        for idx in range(len(alleles)):
-            allele = alleles[idx]
-
-            def _stutterchk(aX):
-                # detecting stutters
-                if (allele.rtime-aX.rtime < params.stutter_rtime_threshold and
-                    aX.height*params.stutter_height_threshold > allele.height):
-                    allele.type = peaktype.stutter
-                    allele.qscore -= 0.2
-            if idx > 0:
-                allele_0 = alleles[idx-1]
-                _stutterchk(allele_0)
-            if idx < len(alleles) - 1:
-                allele_1 = alleles[idx+1]
-                _stutterchk(allele_1)
-
-
-def size_peaks(channel, params, ladders, qcfunc=None):
-
-    data = channel.data
-    scores = []
-
-    # perform fast_align with both clean, high quality peaks and good peaks
-    (score_0, msg_0, result_0, method_0) = pa.fast_align(data, ladders,
-                                                         channel.alleles,
-                                                         qcfunc)
-
-    if score_0 > 0.99:
-        return (score_0, msg_0, result_0, method_0)
-    cerr(f'fast_align(): {score_0:4.2f}')
-    scores.append((score_0, msg_0, result_0, method_0))
-
-    # perform shift_align with both clean, high quality peaks and good peaks
-    (score_0, msg_0, result_0, method_0) = pa.shift_align(data, ladders,
-                                                          channel.alleles,
-                                                          qcfunc)
-
-    if score_0 > 0.99:
-        return (score_0, msg_0, result_0, method_0)
-    cerr(f'shift_align(): {score_0:4.2f}')
-    scores.append((score_0, msg_0, result_0, method_0))
-
-    # perform greedy alignment
-    (score_1, msg_1, result_1, method_1) = pa.greedy_align(data, ladders,
-                                                           channel.alleles,
-                                                           qcfunc)
-
-    scores.append((score_1, msg_1, result_1, method_1))
-
-    scores.sort(key=lambda x: x[0])
-    return scores[-1]
-
-
-def call_peaks(channel, params, func, min_rtime, max_rtime):
-    """
-    call (determine size) each of peaks with type peak-scanned, and annotate as
-    either peak-called or peak-unassigned
-    """
-
-    for allele in channel.alleles:
-        if not min_rtime < allele.rtime < max_rtime:
-            if allele.type == peaktype.scanned:
-                allele.type = peaktype.unassigned
-            continue
-        size, deviation, qcall, method = func(allele.rtime)
-        allele.size = size
-        allele.bin = round(size)
-        allele.deviation = deviation
-        allele.qcall = qcall
-        if allele.type == peaktype.scanned:
-            allele.type = peaktype.called
-        allele.method = binningmethod.notavailable
-
-
-def bin_peaks(channel, params, marker):
-
-    # sortedbins = marker.sortedbins
-    sortedbins = marker.get_sortedbins(channel.batch)
-    threshold = float(marker.repeats)*0.75
-
-    for peak in channel.alleles:
-
-        if peak.size < 0:
-            continue
-
-        if not marker.min_size < peak.size < marker.max_size:
-            peak.type = peaktype.unassigned
-            continue
-
-        size = peak.size
-        idx = sortedbins.bisect_key_right(size)
-
-        if idx == 0:
-            curr_bin = sortedbins[0]
-        elif idx == len(sortedbins):
-            curr_bin = sortedbins[-1]
+    (q50, q70) = percentile(data[offset:], [50, 75])
+    for p in peaks:
+        p.area, p.brtime, p.ertime, p.srtime, ls, rs = calculate_area(data,
+                                                                      p.rtime,
+                                                                      5e-2,
+                                                                      q50)
+        p.wrtime = p.ertime - p.brtime
+        p.beta = p.area / p.rfu
+        if p.wrtime == 0:
+            p.theta = 0
+            p.omega = 0
         else:
-            left_bin = sortedbins[idx-1]
-            right_bin = sortedbins[idx]
-
-            if size - left_bin[3] < right_bin[2] - size:
-                # belongs tp left_bin
-                curr_bin = left_bin
-            else:
-                curr_bin = right_bin
-
-        peak.bin = curr_bin[0]
-
-        # only assigned peak as bin if it unassigned or called
-        if peak.type in [peaktype.unassigned, peaktype.called]:
-            peak.type = peaktype.bin
-
-
-def postannotate_peaks(channel, params):
-    """
-    post annotate binned peaks with peak stutter and broad signals
-    """
-
-    # peak is stutter if the range < params.stutter_range and
-    # ratio < params.stutter_ratio
-
-    alleles = sorted(list(channel.alleles), key=lambda x: x.height,
-                     reverse=True)
-    prev_alleles = []
-
-    for allele in alleles:
-        if allele.type != peaktype.bin:
-            continue
-        if allele.beta > params.max_beta:
-            allele.type = peaktype.broad
-            continue
-        for prev_allele in prev_alleles:
-            if (abs(prev_allele.size - allele.size) < params.stutter_range and
-                    allele.height/prev_allele.height < params.stutter_ratio):
-                allele.type = peaktype.stutter
-            elif (abs(prev_allele.size-allele.size) < params.stutter_range/2+1):
-                allele.type = peaktype.stutter
-            elif prev_allele.bin == allele.bin:
-                allele.type = peaktype.stutter
-
-        # added this allele to prev_alleles
-        prev_alleles.append(allele)
-
-    # XXX: Note on stutter recognition
-    # real stutters can be defined as a peak having at least 2 minor peak
-    # in consecutive or around it, minor peak < stutter_ratio
-
-
-# helper functions
-
-def get_consensus_indices(indices_set):
-
-    n = len(indices_set)
-    indices = {}
-    for indices_item in indices_set:
-        for i in indices_item:
-            try:
-                indices[i] += 1
-            except KeyError:
-                indices[i] = 1
-    threshold = n/2
-    real_indices = []
-    for (k, v) in indices.items():
-        if v > threshold:
-            real_indices.append(k)
-
-    return sorted(real_indices)
-
-
-def filter_by_snr(indices, raw_data, snr):
-
-    size = len(raw_data)
-    background_height = mean(sort(raw_data)[size/4:3*size/4])
-    min_height = background_height * snr
-    return [i for i in indices if raw_data[i] > min_height]
+            p.theta = p.rfu / p.wrtime
+            p.omega = p.area / p.wrtime
 
 
 def calculate_area(y, t, threshold, baseline):
@@ -640,7 +309,7 @@ def calculate_area(y, t, threshold, baseline):
     l_area, brtime, l_shared = half_area(data, threshold, baseline)
 
     return (l_area + r_area - y[t], t - brtime, ertime + t,
-            log2(r_area / l_area), l_shared, r_shared)
+            log2(r_area/l_area), l_shared, r_shared)
 
 
 def half_area(y, threshold, baseline):
@@ -670,55 +339,297 @@ def half_area(y, threshold, baseline):
     return area, index, shared
 
 
-def is_overlap(peak_1, peak_2):
-
-    if peak_1.brtime > peak_2.brtime:
-        peak_1, peak_2 = peak_2, peak_1
-
-    if peak_2.brtime < peak_1.ertime:
-        return True
-
-    return False
+def math_func(x, a, b):
+    # return a*exp(x*b)
+    return a*x + b
 
 
-def is_definitive_overlap(peak_1, data_1, peak_2, data_2):
-    """ is peak_1 is overlapped of peak_2 """
-    for x in range(peak_1.brtime + 3, peak_1.ertime - 3):
-        print(f'x: {x} 1[x]: {data_1[x]} 2[x]: {data_2[x]}')
-        if data_1[x] > data_2[x]:
-            return False
-    return True
+def quadratic_math_func(x, a, b, c):
+    return a*x**2 + b*x + c
 
 
-def calc_overlap_ratio(data, data_r, rtime, brtime, ertime):
-    """ calculate the difference ratio of overlapping area to the left and
-        right area of rtime
-        return ( boolean, total_ratio, log(right_ratio/left_ratio) )
+def filter_for_artifact(peaks, params, expected_peak_number=0):
+    """
+    params.max_peak_number
+    params.artifact_ratio
+    params.artifact_dist ~ 5
     """
 
-    lr = rr = 0.0
-    lc = rc = 0
-    for x in range(brtime, rtime+1):
-        if data[x] > data_r[x]:
-            return (False, 0, 0)
-        lr += data[x]/data_r[x]
-        lc += 1
-    for x in range(rtime, ertime+1):
-        if data[x] > data_r[x]:
-            return (False, 0, 0)
-        rr += data[x]/data_r[x]
-        rc += 1
-    lrc = lr / lc
-    rrc = rr / rc
+    # the following code in this function performs the necessary acrobatic act
+    # to select the most likely peaks that can be considered as true signals,
+    # which is especially necessary for ladder - size assignment
 
-    return (True, (lrc + rrc)/2, log2(rrc/lrc))
+    if len(peaks) == expected_peak_number:
+        return peaks
+
+    # we need to adapt to the noise level of current channel
+    if expected_peak_number > 0:
+        epn = expected_peak_number
+        theta_peaks = sorted(peaks, key=lambda x: x.theta,
+                             reverse=True)[round(epn/2)+3:epn-1]
+        # theta_peaks = theta_peaks[2:4] + theta_peaks[round(epn/2):epn-1]
+        omega_peaks = sorted(peaks, key=lambda x: x.omega, reverse=True)
+        omega_peaks = omega_peaks[2:4] + omega_peaks[round(epn/2):epn-1]
+        rfu_peaks = sorted(peaks, key=lambda x: x.rfu, reverse=True)[:epn-1]
+
+        if theta_peaks[-1].theta < 8:
+            theta_peaks.sort()
+            thetas = array([p.theta for p in theta_peaks])
+            rtimes = [p.rtime for p in theta_peaks]
+
+            # plt.scatter(rtimes, thetas)
+            # plt.show()
+            popt, pcov = curve_fit(math_func, rtimes, 0.5 * thetas, p0=[-1, 1])
+
+            if is_verbosity(4):
+                xx = linspace(rtimes[0], rtimes[-1]+2000, 100)
+                yy = math_func(xx, *popt)
+                plt.plot(xx, yy)
+                plt.scatter([p.rtime for p in peaks], [p.theta for p in peaks])
+                plt.show()
+
+            q_theta = lambda x: x.theta >= math_func(x.rtime,
+                                                     *popt) or x.theta > 100
+
+        else:
+            q_theta = lambda x: x.theta >= min(theta_peaks[-1].theta,
+                                               params.min_theta)
+
+        if omega_peaks[-1].omega < 200:
+            omega_peaks.sort()
+            omegas = array([p.omega for p in omega_peaks])
+            rtimes = array([p.rtime for p in omega_peaks])
+
+            # generate a quadratic threshold for omega
+
+            # generate a quadratic ratio series first
+            popt, pcov = curve_fit(quadratic_math_func, [rtimes[0],
+                                   (rtimes[0] + rtimes[-1])/2, rtimes[-1]],
+                                   [0.05, 0.25, 0.05])
+            ratios = quadratic_math_func(rtimes, *popt)
+            if is_verbosity(4):
+                plt.plot(rtimes, ratios)
+                plt.show()
+
+            # use the ratios to enforce quadratic threshold
+            popt, pcov = curve_fit(quadratic_math_func, rtimes,
+                                   ratios * omegas, p0=[-1, 1, 0])
+            if popt[0] > 0:
+                # enforce small flat ratio
+                popt, pcov = curve_fit(math_func, rtimes, 0.25 * omegas,
+                                       p0=[1, 0])
+                popt = insert(popt, 0, 0.0)  # convert to 3 params
+            if is_verbosity(4):
+                plt.scatter(rtimes, omegas)
+                xx = linspace(rtimes[0], rtimes[-1]+2000, 100)
+                yy = quadratic_math_func(xx, *popt)
+                plt.plot(xx, yy)
+                plt.scatter([p.rtime for p in peaks], [p.omega for p in peaks])
+                plt.show()
+
+            q_omega = lambda x: (x.omega >= 100 or
+                                 x.omega >= quadratic_math_func(x.rtime,
+                                                                *popt))
+
+        else:
+
+            q_omega = lambda x: x.omega >= min(omega_peaks[-1].omega, 50)
+
+        min_rfu = rfu_peaks[-1].rfu * 0.125
+
+    else:
+        min_theta = 0
+        min_omega = 0
+        min_theta_omega = 0
+        min_rfu = 2
+
+    # filter for too sharp/thin peaks
+    filtered_peaks = []
+    for p in peaks:
+        # filtered_peaks.append(p); continue
+        cverr(5, str(p))
+
+        if len(filtered_peaks) < 2 and p.area > 50:
+            # first two real peaks might be a bit lower
+            filtered_peaks.append(p)
+            continue
+
+        if not q_omega(p):
+            cverr(5, '! q_omega')
+            continue
+        # if not q_theta(p):
+        #    print('! q_theta')
+        #    continue
+
+        # if min_theta and min_omega and p.omega < min_omega and p.theta < min_theta:
+        #    print('! omega & theta')
+        #    continue
+        # if min_theta_omega and p.theta * p.omega < min_theta_omega:
+        #    print('! theta_omega')
+        #    continue
+        if p.theta < 1.0 and p.area < 25 and p.omega < 5:
+            cverr(5, '! extreme theta & area & omega')
+            continue
+        if p.rfu < min_rfu:
+            cverr(5, '! extreme min_rfu')
+            continue
+        if p.beta > 25 and p.theta < 0.5:
+            cverr(5, '! extreme beta')
+            continue
+        if p.wrtime < 3:
+            continue
+        if p.rfu >= 25 and p.beta * p.theta < 6:
+            continue
+        if p.rfu < 25 and p.beta * p.theta < 3:
+            continue
+        # if p.omega < 50:
+        #    continue
+        # if p.omega < 100 and p.theta < 5:
+        #    continue
+        # if (params.max_beta and min_theta and
+        #     (p.beta > params.max_beta and p.theta < min_theta)):
+        #    print('! max_beta')
+        #    continue
+        filtered_peaks.append(p)
+
+    # import pprint; pprint.pprint(filtered_peaks)
+
+    # filter for distance between peaks and their rfu ratio
+    peaks = sorted(filtered_peaks, key=lambda x: x.rtime)
+    non_artifact_peaks = []
+    for idx in range(len(peaks)):
+        p = peaks[idx]
+
+        if idx > 0:
+            prev_p = peaks[idx-1]
+            if (p.brtime - prev_p.ertime < params.artifact_dist
+                and p.rfu < params.artifact_ratio * prev_p.rfu):
+                # we are artifact, just skip
+                print('artifact1:', p)
+                continue
+
+        if idx < len(peaks)-1:
+            next_p = peaks[idx+1]
+            if (next_p.brtime - p.ertime < params.artifact_dist
+                and p.rfu < params.artifact_ratio * next_p.rfu):
+                # we are artifact, just skip
+                print('artefact2:', p)
+                continue
+
+        non_artifact_peaks.append(p)
+
+    # import pprint; pprint.pprint(non_artifact_peaks)
+    # print(len(non_artifact_peaks))
+
+    peaks = non_artifact_peaks
+
+    cverr(3, f'## non artifact peaks: {len(peaks)}')
+
+    return peaks
+
+
+def filter_for_ladder(peaks, params):
+    """
+    we need to obtaine enough peaks for ladder alignment purpose, but not too
+    much to avoid excessive alignment process and potentially incorrect
+    alignment
+
+    peaks must in rtime ascending order
+    """
+
+    epn = params.expected_peak_number   # this is the number of ladder peaks
+
+    return peaks
+
+
+def baseline_als(y, lam, p, niter=10):
+    pass
+
+
+@dataclass
+class NormalizedTrace:
+    signal: Any
+    baseline: Any
+
+    def get_qc(self):
+        """ return tuple of qcfunc
+        """
+        return tuple()
+
+
+def normalize_baseline(raw, medwinsize=399, savgol_size=11, savgol_order=5,
+                       tophat_factor=0.01):
+    """
+    params.medwin_size
+    params.savgol_order
+    params.savgol_size
+    """
+
+    median_line = medfilt(raw, [medwinsize])
+    baseline = savgol_filter(median_line, medwinsize, savgol_order)
+    corrected_baseline = raw - baseline
+    maximum(corrected_baseline, 0, out=corrected_baseline)
+    savgol = savgol_filter(corrected_baseline, savgol_size, savgol_order)
+    smooth = white_tophat(savgol, None,
+                          repeat([1], int(round(raw.size * tophat_factor))))
+
+    return NormalizedTrace(signal=smooth, baseline=baseline)
+
+
+@dataclass
+class TraceChannel:
+    dye_name: Any
+    dye_wavelength: Any
+    raw_channel: Any
+    smooth_channel: Any
+
+
+def b(txt):
+    """ return a binary string aka bytes """
+    return txt.encode('UTF-8')
+
+
+def separate_channels(trace: Any) -> list:
+    # return a list of ['dye name', dye_wavelength, numpy_array,
+    #                   numpy_smooth_baseline ]
+
+    results = []
+    for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
+        try:
+            dye_name = trace.get_data(b(f'DyeN{idx}')).decode('UTF-8')
+
+            # below is to workaround on some strange dye names
+            if dye_name == '6FAM':
+                dye_name = '6-FAM'
+            elif dye_name == 'PAT':
+                dye_name = 'PET'
+            elif dye_name == 'Bn Joda':
+                dye_name = 'LIZ'
+
+            try:
+                dye_wavelength = trace.get_data(b(f'DyeW{idx}'))
+            except KeyError:
+                dye_wavelength = WAVELENGTH[dye_name]
+
+            raw_channel = array(trace.get_data(b(f'DATA{data_idx}')))
+            nt = normalize_baseline(raw_channel)
+
+            results.append(
+                TraceChannel(dye_name, dye_wavelength, raw_channel, nt.signal)
+            )
+        except KeyError:
+            pass
+
+    return results
 
 
 def generate_scoring_function(strict_params, relax_params):
 
-    def _scoring_func(alignment_result, method):
+    def _scoring_func(dp_result, method):
         # alignment_result is (dp_score, dp_rss, dp_z, dp_peaks)
-        dp_score, dp_rss, dp_z, dp_peaks = alignment_result
+        dp_score = dp_result.dpscore
+        dp_rss = dp_result.rss
+        dp_peaks = dp_result.sized_peaks
 
         if method == 'strict':
             if (dp_score >= strict_params['min_dpscore'] and
@@ -745,8 +656,8 @@ def generate_scoring_function(strict_params, relax_params):
                 dp_rss_part = 1e-2 ** (1e-3 * delta_rss)
                 msg.append(f"RSS > {relax_params['max_rss']}")
 
-# score based on how many peaks we might miss
-# compared to minimum number of peaks
+            # score based on how many peaks we might miss compared to minimum
+            # number of peaks
             delta_peaks = relax_params['min_sizes'] - len(dp_peaks)
             if delta_peaks <= 0:
                 dp_peaks_part = 1
@@ -756,7 +667,7 @@ def generate_scoring_function(strict_params, relax_params):
                 msg.append(f'Missing peaks = {delta_peaks}')
 
             # total overall score
-            score = 0.3*dp_score_part + dp_rss_part/2 + dp_peaks_part/5
+            score = 0.3*dp_score_part + 0.5*dp_rss_part + 0.2*dp_peaks_part
             return (score, msg)
 
         raise RuntimeError("Shouldn't be here!")
@@ -764,64 +675,7 @@ def generate_scoring_function(strict_params, relax_params):
     return _scoring_func
 
 
-def least_square(ladder_alleles, z):
-    """ 3rd order polynomial resolver
-    """
-    ladder_allele_sorted = SortedListWithKey(ladder_alleles,
-                                             key=lambda k: k.rtime)
-    f = poly1d(z)
-
-    def _f(rtime):
-        size = f(rtime)
-        # get the left-closest and right-closest ladder
-
-        # left_idx = ladder_allele_sorted.bisect_key_left(rtime)
-        right_idx = ladder_allele_sorted.bisect_key_right(rtime)
-        left_idx = right_idx - 1
-        left_ladder = ladder_allele_sorted[left_idx]
-        right_ladder = ladder_allele_sorted[right_idx]
-        # cerr(' ==> rtime: %d/%4.2f  [%d/%4.2f | %d/%4.2f]' % (rtime, size,
-        #            left_ladder.rtime, left_ladder.size,
-        #            right_ladder.rtime, right_ladder.size))
-
-        return (size, (left_ladder.deviation + right_ladder.deviation) / 2,
-                min(left_ladder.qscore, right_ladder.qscore),
-                allelemethod.leastsquare)
-
-    return _f
-
-
-def cubic_spline(ladder_alleles):
-    """ cubic spline interpolation
-        x is peaks, y is standard size
-    """
-
-    ladder_allele_sorted = SortedListWithKey(ladder_alleles,
-                                             key=lambda k: k.rtime)
-
-    ladder_peaks = []
-    ladder_sizes = []
-    for ladder_allele in ladder_allele_sorted:
-        ladder_peaks.append(ladder_allele.rtime)
-        ladder_sizes.append(ladder_allele.size)
-    f = UnivariateSpline(ladder_peaks, ladder_sizes, k=3, s=0)
-
-    def _f(rtime):
-        size = f(rtime)
-
-        right_idx = ladder_allele_sorted.bisect_key_right(rtime)
-        left_idx = right_idx - 1
-        left_ladder = ladder_allele_sorted[left_idx]
-        right_ladder = ladder_allele_sorted[right_idx]
-
-        return (size, (left_ladder.deviation + right_ladder.deviation) / 2,
-                min(left_ladder.qscore, right_ladder.qscore),
-                allelemethod.cubicspline)
-
-    return _f
-
-
-def local_southern(ladder_alleles):
+def local_southern(ladder_alleles: list) -> Callable:
     """ southern local interpolation """
 
     ladder_allele_sorted = SortedListWithKey(ladder_alleles,
@@ -846,7 +700,31 @@ def local_southern(ladder_alleles):
         size2 = poly1d(z2)(rtime)
         min_score2 = min(x.qscore for x in ladder_allele_sorted[idx-1:idx+2])
 
-        return ((size1 + size2)/2, (size1 - size2) ** 2,
-                (min_score1 + min_score2)/2, allelemethod.localsouthern)
+        return ((size1+size2)/2, (size1 - size2)**2, (min_score1+min_score2)/2,
+                const.allelemethod.localsouthern)
 
     return _f
+
+# this is a new algorithm and steps to perform peak analysis
+#
+# fsa = import_fsa()
+# ladder_channel = fsa.ladder_channel()
+# alleles = scan_peaks(ladder_channel, params)
+# alleles = preannotate_peaks(ladder_channel, params)
+# result = align_ladder(ladder_channel, params, size_standards)
+#
+# for channel in fsa.non_ladder_channel():
+#     scan_peaks(channel, params)
+#     preannotate_peaks(channel, params)
+#     call_peaks(channel, params)
+#     bin_peaks(channel, params)
+#     postannotate_peaks(channel, params)
+#
+# the high level methods
+#
+#  fsa = import_fsa()
+#  fsa.align_ladder(params.ladder)
+#  fsa.scan_peaks(params.nonladder, marker=None)
+#  fsa.preannotate_peaks(params.nonladder, marker=None)
+#  fsa.call_peaks(params.nonladder, marker=None)
+#  fsa.bin_peaks(params.nonladder, marker=None)

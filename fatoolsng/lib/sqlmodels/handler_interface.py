@@ -9,7 +9,7 @@ class base_sqlhandler:
     Marker = None
     Batch = None
     Sample = None
-    Assay = None
+    FSA = None
     Allele = None
 
     def __init__(self):
@@ -72,8 +72,8 @@ class base_sqlhandler:
     def get_sample_by_id(self, id):
         return self.get_by_id(self.Sample, id)
 
-    def get_assay_by_id(self, id):
-        return self.get_by_id(self.Assay, id)
+    def get_fsa_by_id(self, id):
+        return self.get_by_id(self.FSA, id)
 
     def get_allele_by_id(self, id):
         return self.get_by_id(self.Allele, id)
@@ -116,9 +116,8 @@ class base_sqlhandler:
 
         q = self.session().query(self.AlleleSet.sample_id,
                                  self.Channel.assay_id,
-                                 self.Allele.marker_id,
-                                 self.Allele.id, self.Allele.bin,
-                                 self.Allele.size,
+                                 self.Allele.marker_id, self.Allele.id,
+                                 self.Allele.bin, self.Allele.size,
                                  self.Allele.height).join(self.Allele).join(self.Channel)
 
         q = q.filter(self.AlleleSet.sample_id.in_(sample_ids))
@@ -133,20 +132,17 @@ class base_sqlhandler:
 
         if marker_ids:
             q = q.filter(self.AlleleSet.marker_id.in_(marker_ids))
-            # q = q.outerjoin( Marker, Allele.marker_id == Marker.id )
-            # q = q.filter( Marker.id.in_( marker_ids ) )
+            # q = q.outerjoin(Marker, Allele.marker_id == Marker.id)
+            # q = q.filter(Marker.id.in_(marker_ids))
 
         if params.abs_threshold > 0:
             q = q.filter(self.Allele.height > params.abs_threshold)
 
         if params.rel_threshold == 0 and params.rel_cutoff == 0 and params.stutter_ratio == 0:
             df = DataFrame([(marker_id, sample_id, value, size, height,
-                             assay_id, allele_id, 1, -1) for (sample_id,
-                                                              assay_id,
-                                                              marker_id,
-                                                              allele_id, value,
-                                                              size,
-                                                              height) in q])
+                             assay_id, allele_id, 1, -1)
+                            for (sample_id, assay_id, marker_id, allele_id,
+                                 value, size, height) in q])
 
         else:
 
@@ -188,11 +184,12 @@ class base_sqlhandler:
                                 allele_ratio = height/dheight
                                 if ((allele_range < params.stutter_range and
                                      allele_ratio < params.stutter_ratio) or
-                                    (allele_range < params.stutter_baserange and
-                                     allele_ratio < params.stutter_baseratio)):
+                                     (allele_range < params.stutter_baserange and
+                                      allele_ratio < params.stutter_baseratio)):
                                     stutter_flag = True
                                     break
-                                    current_alleles.append((value, size, height))
+                                    current_alleles.append((value, size,
+                                                            height))
                                     print(sample_id, marker_id, value, size,
                                           height, allele_ratio)
                                     continue

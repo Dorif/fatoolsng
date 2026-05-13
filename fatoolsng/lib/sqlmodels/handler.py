@@ -1,6 +1,6 @@
 from sys import exit as sys_exit
 from os.path import isfile
-from fatoolsng.lib.utils import cout, cerr
+from fatoolsng.lib.utils import cerr
 from fatoolsng.lib.sqlmodels.handler_interface import base_sqlhandler
 from fatoolsng.lib.sqlmodels import schema
 
@@ -11,7 +11,7 @@ class SQLHandler(base_sqlhandler):
     Marker = schema.Marker
     Batch = schema.Batch
     Sample = schema.Sample
-    Assay = schema.Assay
+    FSA = schema.FSA
     Channel = schema.Channel
     AlleleSet = schema.AlleleSet
     Allele = schema.Allele
@@ -31,5 +31,5 @@ class SQLHandler(base_sqlhandler):
         if create_table:
             schema.Base.metadata.create_all(self.engine)
         from fatoolsng.lib.sqlmodels.setup import setup
-        setup(self.session)
-        cout(f'Database at {self.dbfile} has been initialized.')
+        setup(self)
+        cerr(f'Database at {self.dbfile} has been initialized.')

@@ -1,9 +1,44 @@
+from __future__ import annotations
+
 from jax.numpy import arange
+from numpy.typing import NDArray
 
 
 class ScanningParameter:
 
-    def __init__(self):
+    method: str
+    min_height: float
+    min_size: float
+    max_size: float
+    overlap_threshold: float
+    bin_relative_ratio: float
+    widths: NDArray
+    min_snr: float
+    min_relative_ratio: float
+    max_relative_ratio: float
+    min_height_ratio: float
+    min_rtime: int
+    max_rtime: int
+    max_peak_number: int
+    max_beta: float
+    max_gradient_threshold: float
+    overlap_height_threshold: float
+    stutter_rtime_threshold: float
+    stutter_height_threshold: float
+    height: float
+    ignoredpeaks: list | None
+    width_ratio: float
+    expected_peak_number: int
+    stutter_ratio: float
+    stutter_range: float
+    artifact_ratio: float
+    norm_thres: float
+    min_dist: int
+    min_rfu: float
+    artifact_dist: float
+    min_theta: float
+
+    def __init__(self) -> None:
 
         self.method = 'pd'
         # 'mlpy' - fast, 'cwt' - accurate, 'relmax' - so-so, 'pd' - peak detect
@@ -46,7 +81,12 @@ class ScanningParameter:
 
 class LadderScanningParameter(ScanningParameter):
 
-    def __init__(self):
+    min_peak_number: float
+    ladder_height_win: range
+    max_gradient_threhold: float
+    init_separation_time: int
+
+    def __init__(self) -> None:
         super().__init__()
         self.min_rtime = 1
         self.min_relative_ratio = 0
@@ -74,8 +114,8 @@ class LadderScanningParameter(ScanningParameter):
 
 
 class Params:
-    ladder = LadderScanningParameter()
-    nonladder = ScanningParameter()
+    ladder: LadderScanningParameter = LadderScanningParameter()
+    nonladder: ScanningParameter = ScanningParameter()
 
 
 default_panels = {

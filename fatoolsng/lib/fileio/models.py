@@ -4,8 +4,8 @@
 # inherited model
 
 from fatoolsng.lib.utils import cerr  # , cout
-from fatoolsng.lib.fautil.mixin2 import (MarkerMixIn, PanelMixIn, ChannelMixIn,
-                                         FSAMixIn, AlleleMixIn)
+from fatoolsng.lib.fautil.mixin import (MarkerMixIn, PanelMixIn, ChannelMixIn,
+                                        FSAMixIn, AlleleMixIn)
 from fatoolsng.lib import const
 from os import stat
 from os.path import basename, join, exists

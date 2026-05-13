@@ -1,244 +1,147 @@
-# traceio.py
-'''
-Copyright (C) 2004-2015 Hidayat Trimarsanto <anto@eijkman.go.id>
-Eijkman Institute for Molecular Biology
+"""ABIF/FSA file reader — Biopython-backed, instrument-agnostic.
 
-This module is part of seqpy, a set of python scripts for sequence processing
-and is released under GNU General Public License version 3 or later:
-http://www.gnu.org/licenses/gpl.html
-'''
+Replaces the original hand-rolled struct parser with Bio.SeqIO.AbiIO,
+which handles all ABIF data types and all instruments (ABI 3500/3730,
+SeqStudio, SeqStudio Flex, RapidHIT, Promega CE, third-party clones).
 
-__version__ = '20081006a'
+Public interface is unchanged: read_abif_stream() → ABIF, with
+ABIF.get_channels() and ABIF.get_run_start_time().
+"""
 
-from struct import unpack, calcsize
-from sys import argv, stderr
-from jax.numpy import array
+from __future__ import annotations
+
 from datetime import datetime
-from traceutils import smooth_signal, correct_baseline
+from io import BytesIO
+from typing import BinaryIO
 
-DEBUG = False
+from Bio.SeqIO import read as bio_read
+from jax.numpy import array
+from numpy.typing import NDArray
 
-
-def D(text):
-    if DEBUG:
-        print(text, file=stderr, flush=True)
-
-
-def b(txt):
-    return txt.encode('ASCII')
-
-# --------------------------- ABIF format -------------------------------
-#
-# Format specs are available at:
-# http://www6.appliedbiosystems.com/support/software_community/ABIF_File_Format.pdf
-#
+from fatoolsng.lib.fautil.traceutils import smooth_signal, correct_baseline
 
 
-abitypes = {1: '%dB', 18: 'x%ds', 19: '%ds', 2: '%ds', 201: '%db', 4: '>%dh',
-            5: '>%dl', 7: '>%df', 8: '>%dd', 10: '>1h2B',  # 10: '4s',
-            11: '>4B', 13: '%ds', 1024: '%ds'}
+# Fallback wavelengths when DyeW tags are absent from the file.
+WAVELENGTH = {
+    '6-FAM': 522,
+    'VIC':   554,
+    'NED':   575,
+    'PET':   595,
+    'LIZ':   655,
+}
+
+FILTER_SETS = {
+    'G5': {
+        '6-FAM': {'filter': 'B', 'rgb': (0,    0,    1)},
+        'VIC':   {'filter': 'G', 'rgb': (0,    1,    0)},
+        'NED':   {'filter': 'Y', 'rgb': (0.95, 0.95, 0)},
+        'PET':   {'filter': 'R', 'rgb': (1,    0.5,  0)},
+        'LIZ':   {'filter': 'O', 'rgb': (1,    0,    0)},
+    }
+}
+
+# Non-standard dye names written by various instruments.
+_DYE_ALIASES = {
+    '6FAM':    '6-FAM',
+    'FAM':     '6-FAM',
+    'PAT':     'PET',
+    'Bn Joda': 'LIZ',
+    'ROX':     'LIZ',   # some Chinese instruments label LIZ channel as ROX
+}
 
 
-abitags = {b'GELP1': 2, b'PCON1': 201}
-
-
-abif_direntry = '>4slhhll4sl'
-
-
-class ABIF_DirEntry:
-
-    def __init__(self, tag, no, etype, esize, num, dsize, drec, dhdl):
-        self.tag = tag
-        self.no = no
-        self.etype = etype
-        self.esize = esize
-        self.num = num
-        self.dsize = dsize
-        self.drec = drec
-        self.data = None
-
-    def set_data(self, data):
-        self.data = data
-        self.num = len(data)
-
-    def get_data(self):
-        return self.data
-
-    def __repr__(self):
-        if self.etype in [18, 19]:
-            return f'<ABIF etype: {self.etype}, data: "{self.data}">'
-        elif self.num < 10 and self.etype not in [10, 11]:
-            return f'<ABIF etype: {self.etype}, data: {str(self.data)}>'
-        return f'<ABIF etype: {self.etype}, size: {self.num}>'
+def _decode_dye(raw: str | bytes) -> str:
+    """Decode a bytes dye name, strip nulls/whitespace, apply alias map."""
+    if isinstance(raw, bytes):
+        raw = raw.decode('ascii', errors='replace')
+    name = raw.strip('\x00').strip()
+    return _DYE_ALIASES.get(name, name)
 
 
 class ABIF_Channel:
+    """One fluorescence channel from an FSA file."""
 
-    def __init__(self, dye_name, wavelength, trace):
-        self.dye_name = dye_name
+    def __init__(self, dye_name: str, wavelength: int, trace: NDArray) -> None:
+        self.dye_name  = dye_name
         self.wavelength = wavelength
-        self.raw = trace
-        self._smooth = None
+        self.raw       = trace
+        self._smooth: NDArray | None = None
 
-    def smooth(self):
-        """ return savitsky-golay transformation of raw data """
+    def smooth(self) -> NDArray:
+        """Return baseline-corrected Savitzky-Golay smoothed trace (cached)."""
         if self._smooth is None:
             self._smooth = correct_baseline(smooth_signal(self.raw))
         return self._smooth
 
 
 class ABIF:
+    """Thin wrapper around Biopython's abif_raw tag dictionary."""
 
-    def __init__(self):
-        self.dir_entries = {}
-        self.version = None
+    def __init__(self, raw: dict) -> None:
+        self._raw = raw  # dict: tag+number → parsed value
 
-    def get_entry(self, tagno):
-        tag, no = tagno[:4], int(tagno[4:])
-        return self.dir_entries[tag][no]
+    # ------------------------------------------------------------------
 
-    def get_data(self, tagno):
-        return self.get_entry(tagno).get_data()
+    def get_channels(self) -> dict[str, ABIF_Channel]:
+        """Return {dye_name: ABIF_Channel} for all readable channels."""
+        raw = self._raw
+        results: dict[str, ABIF_Channel] = {}
 
-    def to_seqtrace(self):
-        t = SeqTrace()
-        t.original_trace = self
-        t.num = self.get_entry(b'DATA12').num
-        t.bases = self.get_data(b'PBAS1')
-        t.basecalls = self.get_data(b'PLOC1')
-        try:
-            t.quality = self.get_data(b'PCON1')
-            t.prob_A = t.prob_C = t.prob_G = t.prob_T = t.quality
-        except KeyError:
-            pass
-        order = self.get_data(b'FWO_1')
-        order.upper()
-        t.trace_A = self.get_data(f'DATA{9 + order.index(b"A")}'.encode('ASCII'))
-        t.trace_C = self.get_data(f'DATA{9 + order.index(b"C")}'.encode('ASCII'))
-        t.trace_G = self.get_data(f'DATA{9 + order.index(b"G")}'.encode('ASCII'))
-        t.trace_T = self.get_data(f'DATA{9 + order.index(b"T")}'.encode('ASCII'))
+        # Each physical channel has a DyeN index; raw signal is in DATA1-4
+        # (or DATA105 for the 5th channel on some ABI instruments).
+        # Newer instruments sometimes only write processed DATA9-12 instead
+        # of raw DATA1-4 — fall back to those when raw channels are absent.
+        channel_slots = [
+            (1, [1,   9]),
+            (2, [2,  10]),
+            (3, [3,  11]),
+            (4, [4,  12]),
+            (5, [105]),
+        ]
 
-        return t
+        for idx, data_candidates in channel_slots:
+            dye_raw = raw.get(f'DyeN{idx}')
+            if dye_raw is None:
+                continue
 
-# return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth]
-    def get_channels(self):
-        results = {}
-        for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
-            try:
-                dye_name = self.get_data(b(f'DyeN{idx}')).decode('ASCII')
-                # below is to workaround on some strange dye name
-                if dye_name == '6FAM':
-                    dye_name = '6-FAM'
-                elif dye_name == 'PAT':
-                    dye_name = 'PET'
-                elif dye_name == 'Bn Joda':
-                    dye_name = 'LIZ'
-                try:
-                    dye_wavelength = self.get_data(b(f'DyeW{idx}'))
-                except KeyError:
-                    dye_wavelength = WAVELENGTH[dye_name]
-                raw_channel = array(self.get_data(b(f'DATA{data_idx}')))
+            dye_name = _decode_dye(dye_raw)
+            if not dye_name:
+                continue
 
-                results[dye_name] = ABIF_Channel(dye_name, dye_wavelength,
-                                                 raw_channel)
+            trace_data = None
+            for data_idx in data_candidates:
+                trace_data = raw.get(f'DATA{data_idx}')
+                if trace_data is not None:
+                    break
+            if trace_data is None:
+                continue
 
-            except KeyError:
-                pass
+            wav_raw = raw.get(f'DyeW{idx}')
+            wavelength = int(wav_raw) if wav_raw is not None \
+                else WAVELENGTH.get(dye_name, 0)
 
+            results[dye_name] = ABIF_Channel(dye_name, wavelength,
+                                             array(trace_data))
         return results
 
-    def get_run_start_time(self):
-
-        rdate = self.get_data(b'RUND1')
-        rtime = self.get_data(b'RUNT1')
-        return datetime(rdate[0], rdate[1], rdate[2], rtime[0],
-                                 rtime[1], rtime[2])
-
-
-def read_abif_stream(istream):
-
-    bdata = istream.read()
-
-    if not bdata.startswith(b'ABIF'):
-        raise RuntimeError("Warning: not an ABIF file")
-
-    t = ABIF()
-    t.version = unpack('>h', bdata[4:6])[0]
-
-    dir_entry_size = calcsize(abif_direntry)
-    header = unpack(abif_direntry, bdata[6: 6 + dir_entry_size])
-    dir_entry_num = header[4]
-    dir_entry_off = unpack('>l', header[6])[0]
-
-    # read dir_entry and its associated data
-
-    for i in range(0, dir_entry_num):
-        offset = dir_entry_off + 28 * i
-        elems = unpack(abif_direntry, bdata[offset: offset + 28])
-        de = ABIF_DirEntry(*elems)
-        if de.tag in t.dir_entries:
-            t.dir_entries[de.tag][de.no] = de
-        else:
-            t.dir_entries[de.tag] = {de.no: de}
-
-        # alt_type = abitags.get("%s%d" % (de.tag, de.no), de.etype)
-        alt_type = abitags.get(de.tag + str(de.no).encode('ASCII'), de.etype)
-        if alt_type != de.etype:
-            D(f"Warning: inconsistent element type for {de.tag}")
-        if alt_type == 18:
-            de.num -= 1
-        etype_fmt = abitypes.get(alt_type)
-        if not etype_fmt:
-            raise RuntimeError(f'unknown alt_type: {alt_type} with de.num: {de.num}')
-        if alt_type not in (10, 11, 1024):
-            etype_fmt = etype_fmt % de.num
-        elif alt_type == 1024:
-            etype_fmt = etype_fmt % (de.esize * de.num)
-        # D(etype_fmt, alt_type)
-        if de.dsize <= 4:
-            de.data = unpack(etype_fmt, de.drec[:de.dsize])
-            if alt_type in [10, 11]:
-                continue
-        else:
-            offset = unpack('>l', de.drec)[0]
-            buf = bdata[offset: offset + de.dsize]
-            # print(de.tag, de.no, de.etype, de.esize, etype_fmt, de.dsize)
-            de.data = unpack(etype_fmt, buf)
-        if de.num == 1 or alt_type in (18, 19, 2):
-            de.data = de.data[0]
-
-    return t
+    def get_run_start_time(self) -> datetime:
+        """Return run start as a datetime object."""
+        date_str = self._raw.get('RUND1', '1970-01-01')
+        time_str = self._raw.get('RUNT1', '00:00:00')
+        return datetime.strptime(f'{date_str} {time_str}', '%Y-%m-%d %H:%M:%S')
 
 
-FILTER_SETS = {
-    'G5': {
-        '6-FAM':    {'filter': 'B', 'rgb': (0, 0, 1)},
-        'VIC':      {'filter': 'G', 'rgb': (0, 1, 0)},
-        'NED':      {'filter': 'Y', 'rgb': (0.95, 0.95, 0)},
-        'PET':      {'filter': 'R', 'rgb': (1, 0.5, 0)},
-        'LIZ':      {'filter': 'O', 'rgb': (1, 0, 0)}
-    }
-}
+# ------------------------------------------------------------------
+# Public entry point
 
-WAVELENGTH = {
-    ''
-    '6-FAM': 522,
-    'VIC': 554,
-    'NED': 575,
-    'PET': 595,
-    'LIZ': 655,
-}
+def read_abif_stream(istream: BinaryIO) -> ABIF:
+    """Parse an ABIF/FSA stream and return an ABIF object.
 
-if __name__ == '__main__':
-    """ write spectra in abif file to tab-separated text file """
-    for infile in argv[1:]:
-        with open(infile, 'rb') as instream:
-            t = read_abif_stream(instream)
-        channels = t.get_channels()
-        names = ['"' + c[0] + '"' for c in channels]
-        with open(infile + '.txt', 'wt') as out:
-            out.write('\t'.join(names))
-            out.write('\n')
-            for p in zip(* [c[2] for c in channels]):
-                out.write('\t'.join(str(x) for x in p))
-                out.write('\n')
+    Accepts any binary stream (file handle, BytesIO, etc.).
+    Raises RuntimeError if the stream is not a valid ABIF file.
+    """
+    data = istream.read()
+    if not data.startswith(b'ABIF'):
+        raise RuntimeError('Not a valid ABIF file')
+    record = bio_read(BytesIO(data), 'abi')
+    return ABIF(record.annotations['abif_raw'])

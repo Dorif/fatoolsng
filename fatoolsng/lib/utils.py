@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 from sys import stdout, stderr, exit as sys_exit
 from base64 import b64encode
 from os import urandom
 from math import ceil
+from typing import Any, NoReturn
 
 
-def cout(s, nl=True, flush=False):
+def cout(s: str, nl: bool = True, flush: bool = False) -> None:
     stdout.write(s)
     if nl:
         stdout.write('\n')
@@ -12,7 +15,7 @@ def cout(s, nl=True, flush=False):
         stdout.flush()
 
 
-def cerr(s, nl=True, flush=False):
+def cerr(s: str, nl: bool = True, flush: bool = False) -> None:
     stderr.write(s)
     if nl:
         stderr.write('\n')
@@ -20,7 +23,7 @@ def cerr(s, nl=True, flush=False):
         stderr.flush()
 
 
-def cexit(s, code=1):
+def cexit(s: str, code: int = 1) -> NoReturn:
     cerr(s)
     sys_exit(code)
 
@@ -28,53 +31,39 @@ def cexit(s, code=1):
 _VERBOSITY_ = 0
 
 
-def set_verbosity(value):
+def set_verbosity(value: int) -> None:
     global _VERBOSITY_
     _VERBOSITY_ = value
 
 
-def is_verbosity(value):
+def is_verbosity(value: int) -> bool:
     global _VERBOSITY_
     return (_VERBOSITY_ >= value)
 
 
-def cverr(value, txt, nl=True, flush=False):
+def cverr(value: int, txt: str, nl: bool = True, flush: bool = False) -> None:
     global _VERBOSITY_
     if _VERBOSITY_ >= value:
         cerr(txt, nl, flush)
 
 
-def get_dbhandler(args, initial=False):
+def get_dbhandler(args: Any, initial: bool = False) -> Any:
     """ return suitable handler from args """
 
     if args.sqldb:
-
-        if args.schema == 1:
-
-            from fatoolsng.lib.sqlmodels.handler import SQLHandler
-
-            return SQLHandler(args.sqldb, initial)
-
-        elif args.schema == 2:
-
-            from fatoolsng.lib.sqlmodels2.handler import SQLHandler
-
-            return SQLHandler(args.sqldb, initial)
-
-        else:
-            cexit('Please provide correct sql schema version!')
+        from fatoolsng.lib.sqlmodels.handler import SQLHandler
+        return SQLHandler(args.sqldb, initial)
 
     elif args.fsdb is not False:
-        # we use filesystem-based database system
-        raise NotImplementedError()
+        raise NotImplementedError('filesystem-based database is not supported')
 
     cerr('ERR: Please specify database system using --sqldb or --fsdb options!')
     sys_exit(1)
 
 
-def tokenize(options, converter=None):
+def tokenize(options: str, converter: Any = None) -> dict[str, Any]:
     """ return { 'A': '1,2,3', 'B': True } for options 'A=1,2,3;B' """
-    opt_dict = {}
+    opt_dict: dict[str, Any] = {}
     for token in options.split(';'):
         keys = token.split('=', 1)
         if len(keys) == 1:
@@ -85,8 +74,8 @@ def tokenize(options, converter=None):
     return opt_dict
 
 
-random_string = lambda n: b64encode(urandom(int(ceil(0.75*n))),
-                                           b'-_')[:n].decode('UTF-8')
+def random_string(n: int) -> str:
+    return b64encode(urandom(int(ceil(0.75*n))), b'-_')[:n].decode('UTF-8')
 
 
 _R_lock_ = None

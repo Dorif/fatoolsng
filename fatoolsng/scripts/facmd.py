@@ -181,8 +181,8 @@ def do_scan(args, dbh):
     assay_list = get_assay_list(args, dbh)
 
     if args.peakcachedb:
-        from plyvel import DB
-        peakdb = DB(args.peakcachedb, create_if_missing=False)
+        from fatoolsng.lib.fautil.peakcache import PeakCache
+        peakdb = PeakCache(args.peakcachedb, create_if_missing=False)
     else:
         peakdb = None
 
@@ -221,17 +221,13 @@ def do_alignladder(args, dbh):
     counter = 1
     for (assay, sample_code) in assay_list:
         cerr(f'I: [{counter}/{len(assay_list)}] - Aligning: {sample_code} | {assay.filename}')
-        (dpscore, rss, no_of_peaks, no_of_ladders, qcscore, remarks,
-         method) = assay.alignladder(args.excluded_peaks,
-                                     force_mode=args.force)
-        if qcscore < 0.9:
+        (score, rss, nladder) = assay.align()
+        if score < 0.9:
             msg = 'W! low ladder QC'
         else:
             msg = 'I:'
-        cerr(f'{msg} [{counter}/{len(assay_list)}] - Score {qcscore:3.2f} {dpscore:4.2f} {rss:5.2f} {no_of_peaks}/{no_of_ladders} {method} for {sample_code} | {assay.filename}')
-        if remarks:
-            cerr(f"{msg} - {' | '.join(remarks)}")
-        if qcscore != 1.0 and args.abort:
+        cerr(f'{msg} [{counter}/{len(assay_list)}] - Score {score:3.2f} | RSS {rss:5.2f} | {nladder} peaks for {sample_code} | {assay.filename}')
+        if score != 1.0 and args.abort:
             sys_exit(1)
 
         counter += 1
@@ -296,7 +292,7 @@ def do_postannotate(args, dbh):
 
 def do_findpeaks(args, dbh):
 
-    from plyvel import DB
+    from fatoolsng.lib.fautil.peakcache import PeakCache
     from fatoolsng.lib import params
 
     cerr('Finding and caching peaks...')
@@ -304,11 +300,10 @@ def do_findpeaks(args, dbh):
     if not args.peakcachedb:
         cexit('ERR - please provide cache db filename')
 
-    # opening LevelDB database
     if args.peakcachedb == '-':
         peakdb = None
     else:
-        peakdb = DB(args.peakcachedb)
+        peakdb = PeakCache(args.peakcachedb)
 
     scanning_parameter = params.Params()
     assay_list = get_assay_list(args, dbh)

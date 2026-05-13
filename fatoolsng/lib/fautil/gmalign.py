@@ -1,5 +1,5 @@
 
-from jax.numpy import poly1d
+from numpy import poly1d
 from jax.scipy.optimize import minimize
 from scipy.optimize import differential_evolution
 from fatoolsng.lib.utils import cerr
