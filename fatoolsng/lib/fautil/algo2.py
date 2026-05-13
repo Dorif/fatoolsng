@@ -18,37 +18,36 @@ from matplotlib import pyplot as plt
 from sortedcontainers import SortedListWithKey
 
 
-import attr
+from dataclasses import dataclass, field
+from typing import Any
 
 
-@attr.s(repr=False)
-class Peak(object):
-    rtime = attr.ib(default=-1)
-    rfu = attr.ib(default=-1)
-    area = attr.ib(default=-1)
-    brtime = attr.ib(default=-1)
-    ertime = attr.ib(default=-1)
-    srtime = attr.ib(default=-1)
-    beta = attr.ib(default=-1)
-    theta = attr.ib(default=-1)
-    omega = attr.ib(default=-1)
+@dataclass(repr=False)
+class Peak:
+    rtime: int = -1
+    rfu: int = -1
+    area: int = -1
+    brtime: int = -1
+    ertime: int = -1
+    srtime: float = -1
+    beta: float = -1
+    theta: float = -1
+    omega: int = -1
 
-    size = attr.ib(default=-1)
-    bin = attr.ib(default=-1)
+    size: float = -1
+    bin: int = -1
 
     def __repr__(self):
-        return "<P: %4d | %4d | %5d | %2d | %+3.2f | b %4.1f | t %4.2f | o %3d>" % (
-            self.rtime, self.rfu, self.area, self.ertime - self.brtime,
-            self.srtime, self.beta, self.theta, self.omega)
+        return f"<P: {self.rtime:4d} | {self.rfu:4d} | {self.area:5d} | {self.ertime - self.brtime:2d} | {self.srtime:+3.2f} | b {self.beta:4.1f} | t {self.theta:4.2f} | o {self.omega:3d}>"
 
 
-@attr.s
-class Channel(object):
-    data = attr.ib()
-    marker = attr.ib()
-    alleles = attr.ib(default=list)
+@dataclass
+class Channel:
+    data: Any
+    marker: Any
+    alleles: list = field(default_factory=list)
 
-    fsa = attr.ib(default=None)
+    fsa: Any = None
 
     def scan(self, params, offset=0):
 
@@ -57,7 +56,7 @@ class Channel(object):
         else:
             alleles = scan_peaks(self, params.ladder, offset)
 
-        cverr(1, "# scanning %s: %d peak(s)" % (self.marker, len(alleles)))
+        cverr(1, f"# scanning {self.marker}: {len(alleles)} peak(s)")
 
         return alleles
 
@@ -74,7 +73,7 @@ class Channel(object):
 def scan_peaks(channel, params, offset=0):
     """
     """
-    cerr('I: scanning peaks for: %s' % channel)
+    cerr(f'I: scanning peaks for: {channel}')
 
     # check if channel is ladder channel, and
     # adjust expected_peak_number accordingly
@@ -214,8 +213,8 @@ def find_raw_peaks(data, params, offset, expected_peak_number=0):
         indices = indexes(obs_data, params.norm_thres, params.min_dist)
 
     indices = indexes(obs_data, 1e-7, params.min_dist)
-    cverr(5, '## indices: %s' % str(indices))
-    cverr(3, '## raw indices: %d' % len(indices))
+    cverr(5, f'## indices: {str(indices)}')
+    cverr(3, f'## raw indices: {len(indices)}')
 
     if len(indices) == 0:
         return []
@@ -237,7 +236,7 @@ def find_raw_peaks(data, params, offset, expected_peak_number=0):
         peaks = peaks[: round(expected_peak_number * 2)]
         peaks.sort(key=lambda x: x.rtime)
 
-    cverr(3, '## peak above min rfu: %d' % len(peaks))
+    cverr(3, f'## peak above min rfu: {len(peaks)}')
 
     return peaks
 
@@ -519,7 +518,7 @@ def filter_for_artifact(peaks, params, expected_peak_number=0):
 
     peaks = non_artifact_peaks
 
-    cverr(3, '## non artifact peaks: %d' % len(peaks))
+    cverr(3, f'## non artifact peaks: {len(peaks)}')
 
     return peaks
 
@@ -542,10 +541,10 @@ def baseline_als(y, lam, p, niter=10):
     pass
 
 
-@attr.s
-class NormalizedTrace(object):
-    signal = attr.ib()
-    baseline = attr.ib()
+@dataclass
+class NormalizedTrace:
+    signal: Any
+    baseline: Any
 
     def get_qc(self):
         """ return tuple of qcfunc
@@ -572,12 +571,12 @@ def normalize_baseline(raw, medwinsize=399, savgol_size=11, savgol_order=5,
     return NormalizedTrace(signal=smooth, baseline=baseline)
 
 
-@attr.s
-class TraceChannel(object):
-    dye_name = attr.ib()
-    dye_wavelength = attr.ib()
-    raw_channel = attr.ib()
-    smooth_channel = attr.ib()
+@dataclass
+class TraceChannel:
+    dye_name: Any
+    dye_wavelength: Any
+    raw_channel: Any
+    smooth_channel: Any
 
 
 def b(txt):
@@ -592,7 +591,7 @@ def separate_channels(trace):
     results = []
     for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
         try:
-            dye_name = trace.get_data(b('DyeN%d' % idx)).decode('UTF-8')
+            dye_name = trace.get_data(b(f'DyeN{idx}')).decode('UTF-8')
 
             # below is to workaround on some strange dye names
             if dye_name == '6FAM':
@@ -603,11 +602,11 @@ def separate_channels(trace):
                 dye_name = 'LIZ'
 
             try:
-                dye_wavelength = trace.get_data(b('DyeW%d' % idx))
+                dye_wavelength = trace.get_data(b(f'DyeW{idx}'))
             except KeyError:
                 dye_wavelength = WAVELENGTH[dye_name]
 
-            raw_channel = array(trace.get_data(b('DATA%d' % data_idx)))
+            raw_channel = array(trace.get_data(b(f'DATA{data_idx}')))
             nt = normalize_baseline(raw_channel)
 
             results.append(
@@ -650,7 +649,7 @@ def generate_scoring_function(strict_params, relax_params):
                 dp_rss_part = 1
             else:
                 dp_rss_part = 1e-2 ** (1e-3 * delta_rss)
-                msg.append('RSS > %d' % (relax_params['max_rss']))
+                msg.append(f"RSS > {relax_params['max_rss']}")
 
             # score based on how many peaks we might miss compared to minimum
             # number of peaks
@@ -660,7 +659,7 @@ def generate_scoring_function(strict_params, relax_params):
             else:
                 dp_peaks_part = max(0,
                                     -2*delta_peaks*relax_params['min_sizes']-1)
-                msg.append('Missing peaks = %d' % delta_peaks)
+                msg.append(f'Missing peaks = {delta_peaks}')
 
             # total overall score
             score = 0.3*dp_score_part + 0.5*dp_rss_part + 0.2*dp_peaks_part

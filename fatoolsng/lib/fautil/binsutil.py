@@ -1,5 +1,5 @@
-import pandas
-import attr
+from pandas import read_table
+from dataclasses import dataclass, field
 from ruamel.yaml import YAML as yaml
 from jax.numpy import round, mean, percentile, median
 from fatoolsng.lib.fautil.mixin import BinMixIn
@@ -22,7 +22,7 @@ def do_binsutil(args):
 
 def do_summarize(args):
 
-    d = pandas.read_table(args.infile)
+    d = read_table(args.infile)
     peaks = d[d['MARKER'] == args.marker]
     stats = bin_stats(peaks)
     for s in sorted(stats.keys()):
@@ -31,7 +31,7 @@ def do_summarize(args):
 
 def do_optimize(args):
 
-    d = pandas.read_table(args.infile)
+    d = read_table(args.infile)
 
     p = d[d['MARKER'] == args.marker].copy()
 
@@ -48,7 +48,7 @@ def do_optimize(args):
     tbin.initbins(args.anchor, args.repeats, args.min, args.max, args.shift)
 
     for i in range(0, 30):
-        print('<<ITER:  %d >>' % i)
+        print(f'<<ITER:  {i} >>')
         call_peaks(tbin, p)
         stat = bin_stats(p)
         for s in sorted(stat.keys()):
@@ -86,17 +86,16 @@ class Bin(BinMixIn):
         adjust_bins(self.bins, containers, reset, repeats)
 
 
-@attr.s
-class BinContainer(object):
+@dataclass
+class BinContainer:
 
-    size = attr.ib(default=-1)
-    values = attr.ib(default=attr.Factory(list))
+    size: int = -1
+    values: list = field(default_factory=list)
 
     def repr(self):
-        return "<Bin: %d / %5.4f / %5.4f / %5.4f - %5.4f d: %5.4f f: %d>" % (
-            self.size, mean(self.values), median(self.values),
-            min(self.values), max(self.values),
-            max(self.values) - min(self.values), len(self.values))
+        return (f"<Bin: {self.size} / {mean(self.values):5.4f} / {median(self.values):5.4f}"
+                f" / {min(self.values):5.4f} - {max(self.values):5.4f}"
+                f" d: {max(self.values) - min(self.values):5.4f} f: {len(self.values)}>")
 
     def percentile(self, q):
         return percentile(self.values, q)

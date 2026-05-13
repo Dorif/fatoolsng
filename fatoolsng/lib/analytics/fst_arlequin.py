@@ -7,7 +7,7 @@ from jax.numpy import nan
 
 # FST calculation using Arlequin
 
-class ArlequinResult(object):
+class ArlequinResult:
 
     def __init__(self, analytical_sets, output, error=None):
         self.output = output
@@ -94,7 +94,7 @@ def standardized_fst(fst_orig, fst_max):
             if float(fst_max.fst_m[i][j]) == 0:
                 fst_std.fst_m[i][j] = nan
             else:
-                fst_std.fst_m[i][j] = "%1.4f" % (float(fst_orig.fst_m[i][j])/float(fst_max.fst_m[i][j]))
+                fst_std.fst_m[i][j] = f"{float(fst_orig.fst_m[i][j])/float(fst_max.fst_m[i][j]):1.4f}"
 
     return fst_std
 
@@ -103,8 +103,8 @@ def run_arlequin(analytical_sets, dbh, tmp_dir, recode=False):
 
     filename = 'genaf-recoded' if recode else 'genaf'
 
-    arp_file = '%s/%s.arp' % (tmp_dir, filename)
-    ars_file = '%s/%s.ars' % (tmp_dir, filename)
+    arp_file = f'{tmp_dir}/{filename}.arp'
+    ars_file = f'{tmp_dir}/{filename}.ars'
 
     with open(arp_file, 'wt') as f:
         export_arlequin(analytical_sets, dbh, f, recode)
@@ -112,13 +112,11 @@ def run_arlequin(analytical_sets, dbh, tmp_dir, recode=False):
         f.write(ars_content)
 
     # run and wait until finish -> arlecore should be fast enough anyway
-    cerr('Running arlecore in directory: %s' % tmp_dir)
+    cerr(f'Running arlecore in directory: {tmp_dir}')
     call(['arlecore', arp_file, ars_file], cwd=tmp_dir)
 
     result = ArlequinResult(analytical_sets,
-                            output=open('%s/%s.res/%s.htm' % (tmp_dir,
-                                                              filename,
-                                                              filename)).read(),)
+                            output=open(f'{tmp_dir}/{filename}.res/{filename}.htm').read(),)
 
     return result
 

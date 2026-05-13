@@ -1,6 +1,5 @@
 from collections import defaultdict
 from jax.numpy import mean, percentile
-from pprint import pprint
 
 
 def summarize_alleles(analytical_sets):
@@ -99,13 +98,13 @@ def summarize_bins(analytical_sets):
     for label in allele_summaries:
         for (marker_id,
              allele_summary) in allele_summaries[label]['summary'].items():
-            pprint(allele_summary)
+            print(allele_summary)
             for allele_params in allele_summary['alleles']:
                 bin_value = allele_params[0]
                 size_items = allele_params[9][0]
                 marker_summaries[marker_id][bin_value].extend(size_items)
                 marker_summaries[marker_id][bin_value].sort()
-    pprint(marker_summaries)
+    print(marker_summaries)
     bin_summaries = {}
     # process marker summary to obtain new bin paramater
     for marker_id, marker_summary in marker_summaries.items():
@@ -137,7 +136,7 @@ def plot_alleles(allele_reports, filename, rfu_height=True, dbh=None):
     axhlines = set()
     binsets = {}
     for idx, allele_report in enumerate(allele_reports.values(), 0):
-        pprint(allele_report)
+        print(allele_report)
         colour = allele_report['colour']
         for (marker_id, summary) in allele_report['summary'].items():
             if marker_id in axes:

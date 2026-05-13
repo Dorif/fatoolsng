@@ -5,7 +5,7 @@ from pandas import pivot_table
 # from pprint import pprint
 
 
-class AnalyticalSet(object):
+class AnalyticalSet:
     """ AnalyticalSet
         _allele_df: dataframe of (marker_id, sample_id, value, size, height, assay_id)
         _marker_df:
@@ -216,7 +216,7 @@ class AnalyticalSetContainer(list):
             if not self._marker_ids:
                 self._marker_ids = set(a_set.marker_ids)
             elif (self._marker_ids ^ set(a_set.marker_ids)):
-                raise RuntimeError('Inconsistence marker set for sample set: %s' % a_set.label)
+                raise RuntimeError(f'Inconsistence marker set for sample set: {a_set.label}')
 
     def get_sample_sets(self):
         return self._sample_sets

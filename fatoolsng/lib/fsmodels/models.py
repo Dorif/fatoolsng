@@ -1,19 +1,19 @@
 # basic classes that mimic msdb classes
 # this is filesystem-based database
-import os
+from os.path import exists
 from fatoolsng.lib.fautil.mixin import (AssayMixIn, ChannelMixIn,
                                         MarkerMixIn, PanelMixIn,
                                         AlleleSetMixIn)
 
 
-class sessionmgr(object):
+class sessionmgr:
 
     def __init__(self):
         self.rootdir = None
 
     def set_rootdir(self, rootdir):
         if self.rootdir is not None:
-            raise RuntimeError('db is alredy open for rootdir: %s' % rootdir)
+            raise RuntimeError(f'db is alredy open for rootdir: {rootdir}')
 
         self.rootdir = rootdir
 
@@ -25,7 +25,7 @@ class sessionmgr(object):
 dbsession = sessionmgr()
 
 
-class base(object):
+class base:
 
     def __init__(self):
         pass
@@ -60,15 +60,15 @@ class Assay(base, AssayMixIn):
         """ load assay from files into memory """
 
         # try to load channels from yaml if exists
-        channel_yaml = "%s/channels.yaml" % self._dirname
-        if os.path.exists(channel_yaml):
+        channel_yaml = f"{self._dirname}/channels.yaml"
+        if exists(channel_yaml):
             # load yaml
             pass
 
         # load smooth data, if not exists
-        trace_file = "%s/traces.tab" % self._dirname
+        trace_file = f"{self._dirname}/traces.tab"
         if with_trace:
-            if os.path.exists(trace_file):
+            if exists(trace_file):
                 pass
             else:
                 pass
@@ -165,7 +165,7 @@ class Allele(base):
         self.marker = marker
 
     def __repr__(self):
-        return '<Allele rtime: %d height: %d>' % (self.rtime, self.height)
+        return f'<Allele rtime: {self.rtime} height: {self.height}>'
 
 
 class Marker(base, MarkerMixIn):
@@ -197,7 +197,7 @@ class Panel(base, PanelMixIn):
         self._dyes = {}
 
     def get_marker(self, code):
-        print('creating marker: %s' % code)
+        print(f'creating marker: {code}')
         m = Marker(code, 10, 600, 0, None)
         return m
 
@@ -253,7 +253,7 @@ def load_assay(dirname):
 
     assay_name = None
     assay_file = assay_name + '.fsa'
-    assay_path = "%s/%s" % (assay_name, assay_file)
+    assay_path = f"{assay_name}/{assay_file}"
 
 
 def load_channels(yaml_file):
@@ -263,6 +263,6 @@ def load_channels(yaml_file):
     pass
 
 
-class fsdb(object):
+class fsdb:
     def __init__(self, rootdir):
         self.rootdir = rootdir

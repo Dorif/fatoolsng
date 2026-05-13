@@ -2,7 +2,7 @@ from pandas import DataFrame
 from sqlalchemy.orm.exc import NoResultFound
 
 
-class base_sqlhandler(object):
+class base_sqlhandler:
     """ base class for SQLAlchemy-friendly handler """
 
     Panel = None
@@ -45,7 +45,7 @@ class base_sqlhandler(object):
             else:
                 return self.Panel.search(panel_code, self.session())
         except NoResultFound:
-            raise RuntimeError('Panel code %s does not exist!' % panel_code)
+            raise RuntimeError(f'Panel code {panel_code} does not exist!')
 
     def get_batch(self, batch_code):
         try:
@@ -57,7 +57,7 @@ class base_sqlhandler(object):
             else:
                 return self.Batch.search(batch_code, self.session())
         except NoResultFound:
-            raise RuntimeError('Batch code %s does not exist!' % batch_code)
+            raise RuntimeError(f'Batch code {batch_code} does not exist!')
 
     def get_marker(self, marker_code):
         assert marker_code

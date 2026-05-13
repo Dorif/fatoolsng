@@ -1,7 +1,7 @@
 from jax.numpy import arange
 
 
-class ScanningParameter(object):
+class ScanningParameter:
 
     def __init__(self):
 
@@ -73,7 +73,7 @@ class LadderScanningParameter(ScanningParameter):
         self.artifact_ratio = 0.5
 
 
-class Params(object):
+class Params:
     ladder = LadderScanningParameter()
     nonladder = ScanningParameter()
 

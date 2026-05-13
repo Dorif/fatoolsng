@@ -2,16 +2,17 @@
 from fatoolsng.lib import params
 from fatoolsng.lib.utils import cerr, cverr, cexit, tokenize, detect_buffer, set_verbosity  # , cout
 from sys import exit
-import argparse
+from argparse import ArgumentParser
 from ruamel.yaml import YAML as yaml
-import csv
-import os
+from csv import DictReader
+from os.path import join, expanduser, exists
+from os import makedirs
 from io import StringIO
 
 
 def init_argparser(parser=None):
 
-    p = parser if parser else argparse.ArgumentParser('facmd')
+    p = parser if parser else ArgumentParser('facmd')
 
     p.add_argument('--sqldb', default=False, help='SQLite3 database filename')
 
@@ -109,7 +110,7 @@ def main(args):
         dbh = get_dbhandler(args)
         fsa_list = get_fsa_list(args, dbh)
 
-    cerr('I: obtained %d FSA' % len(fsa_list))
+    cerr(f'I: obtained {len(fsa_list)} FSA')
 
     if args.commit:
         with transaction.manager:
@@ -149,7 +150,7 @@ def do_facmds(args, fsa_list, dbh=None):
     if executed == 0:
         cerr('W: please provide a relevant command')
     else:
-        cerr('I: executed %d command(s)' % executed)
+        cerr(f'I: executed {executed} command(s)')
 
 
 def do_clear(args, fsa_list, dbh):
@@ -161,7 +162,7 @@ def do_align(args, fsa_list, dbh):
     cerr('I: Aligning size standards...')
 
     for (fsa, sample_code) in fsa_list:
-        cverr(3, 'D: aligning FSA %s' % fsa.filename)
+        cverr(3, f'D: aligning FSA {fsa.filename}')
         fsa.align(params.Params())
 
 
@@ -170,7 +171,7 @@ def do_call(args, fsa_list, dbh):
     cerr('I: Calling non-ladder peaks...')
 
     for (fsa, sample_code) in fsa_list:
-        cverr(3, 'D: calling FSA %s' % fsa.filename)
+        cverr(3, f'D: calling FSA {fsa.filename}')
         fsa.call(params.Params(), args.marker)
 
 
@@ -248,13 +249,13 @@ def open_fsa(args):
     # prepare caching
     cache_path = None
     if not args.no_cache:
-        cache_path = os.path.join(os.path.expanduser('~'), '.fatools_caches',
-                                  'channels')
+        cache_path = join(expanduser('~'), '.fatools_caches',
+                          'channels')
         if args.cache_path is not None:
-            cache_path = os.path.join(args.cache_path, '.fatools_caches',
-                                      'channels')
-        if not os.path.exists(cache_path):
-            os.makedirs(cache_path)
+            cache_path = join(args.cache_path, '.fatools_caches',
+                              'channels')
+        if not exists(cache_path):
+            makedirs(cache_path)
 
     if args.file:
         for fsa_filename in args.file.split(','):
@@ -269,7 +270,7 @@ def open_fsa(args):
 
         with open(args.infile) as f:
             buf, delim = detect_buffer(f.read())
-        inrows = csv.DictReader(StringIO(buf), delimiter=delim)
+        inrows = DictReader(StringIO(buf), delimiter=delim)
         line = 1
         index = 1
 
@@ -315,7 +316,7 @@ def get_fsa_list(args, dbh):
 
     batch = dbh.get_batch(args.batch)
     if not batch:
-        cexit('ERR: batch %s not found!' % args.batch, 1)
+        cexit(f'ERR: batch {args.batch} not found!', 1)
 
     samples = []
     if args.sample:
@@ -343,5 +344,5 @@ def get_fsa_list(args, dbh):
                 continue
             fsa_list.append((assay, sample.code))
 
-    cerr('I: number of assays to be processed: %d' % len(assay_list))
+    cerr(f'I: number of assays to be processed: {len(assay_list)}')
     return fsa_list

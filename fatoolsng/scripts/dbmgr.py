@@ -1,16 +1,18 @@
-import sys
-import argparse
+from sys import exit as sys_exit, stdout
+from argparse import ArgumentParser
+from contextlib import nullcontext
 from ruamel.yaml import YAML as yaml
-import csv
-import transaction
-import os
+from csv import DictReader, reader as csv_reader
+from transaction import manager as transaction_manager
+from os import makedirs
+from os.path import splitext
 from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler, tokenize
 
 
 def init_argparser(parser=None):
 
     if parser is None:
-        p = argparse.ArgumentParser('dbmgr')
+        p = ArgumentParser('dbmgr')
     else:
         p = parser
 
@@ -155,7 +157,7 @@ def init_argparser(parser=None):
 def main(args):
 
     if not args.test and (args.commit or args.initdb):
-        with transaction.manager:
+        with transaction_manager:
             do_dbmgr(args)
             cerr('** COMMIT to database **')
 
@@ -164,7 +166,7 @@ def main(args):
         if not args.test:
             keys = input('Do you want to continue [y/n]? ')
             if not keys.lower().strip().startswith('y'):
-                sys.exit(1)
+                sys_exit(1)
 
         do_dbmgr(args)
 
@@ -230,19 +232,20 @@ def do_initdb(args, dbh):
 
 def do_importpanel(args, dbh):
 
-    panels = yaml.load(open(args.infile))
+    with open(args.infile) as f:
+        panels = yaml.load(f)
     for code, panel in panels.items():
         if panel['code'] != code:
-            cerr('ERR: code for panel %s is not consistent!' % code)
-            sys.exit(1)
+            cerr(f'ERR: code for panel {code} is not consistent!')
+            sys_exit(1)
         p = dbh.new_panel()
         p.update(panel)
         if args.update:
             db_p = p.sync(dbh.session)
-            cout("INFO: panel %s sync'd." % db_p.code)
+            cout(f"INFO: panel {db_p.code} sync'd.")
         else:
             dbh.session.add(p)
-            cout("INFO: panel %s added." % p.code)
+            cout(f"INFO: panel {p.code} added.")
 
 
 def do_exportpanel(args, dbh):
@@ -260,35 +263,36 @@ def do_exportpanel(args, dbh):
 
     panel_dict = [p.to_dict() for p in dbh.get_panel(panel_code)]
 
-    yaml.dump(panel_dict, open(args.outfile, 'w'))
-    cerr('Panels exported to file %s' % args.outfile)
+    with open(args.outfile, 'w') as f:
+        yaml.dump(panel_dict, f)
+    cerr(f'Panels exported to file {args.outfile}')
 
 
 def do_importmarker(args, dbh):
 
-    markers = yaml.load(open(args.infile))
+    with open(args.infile) as f:
+        markers = yaml.load(f)
     # markers is a dict of dict, so need a new instance for updating
 
     for code, marker in markers.items():
         if marker['code'] != code:
-            cerr('ERR: code for marker %s is not consistent!' % code)
-            sys.exit(1)
+            cerr(f'ERR: code for marker {code} is not consistent!')
+            sys_exit(1)
         m = dbh.new_marker()
         m.update(marker)
         if args.update:
             db_m = m.sync(dbh.session)
-            cerr("INFO: marker: %s sync'd." % db_m.code)
+            cerr(f"INFO: marker: {db_m.code} sync'd.")
         else:
             dbh.session.add(m)
-            cerr('INFO: marker %s added.' % m.code)
+            cerr(f'INFO: marker {m.code} added.')
             db_m = m
 
         if 'bins_range' in marker:
             batch = dbh.get_batch('default')
             db_m.initbins(marker['bins_range'][0], marker['bins_range'][1],
                           batch)
-            cerr('INFO: bins for marker %s has been created in batch %s'
-                 % (db_m.code, batch.code))
+            cerr(f'INFO: bins for marker {db_m.code} has been created in batch {batch.code}')
 
 
 def do_initbatch(args, dbh):
@@ -301,7 +305,7 @@ def do_initbatch(args, dbh):
     def_batch = dbh.get_batch('default')
     b.bin_batch = def_batch
     dbh.session.add(b)
-    cout('INFO: batch %s added.' % b.code)
+    cout(f'INFO: batch {b.code} added.')
 
 
 def do_showbatches(args, dbh):
@@ -309,26 +313,27 @@ def do_showbatches(args, dbh):
     cout('Available batch(es):')
     batches = dbh.get_batches(None)
     for batch in batches:
-        cout('  %s' % batch.code)
+        cout(f'  {batch.code}')
 
 
 def do_initsample(args, dbh):
 
     if not args.batch:
         cerr('ERR: batch code must be supplied!')
-        sys.exit(1)
+        sys_exit(1)
 
     b = dbh.Batch.search(args.batch, dbh.session)
-    cout('INFO - using batch code: %s' % b.code)
+    cout(f'INFO - using batch code: {b.code}')
 
-    name, ext = os.path.splitext(args.infile)
+    name, ext = splitext(args.infile)
 
     if ext in ['.csv', '.tab', '.tsv']:
 
         delim = ',' if ext == '.csv' else '\t'
 
-        dict_samples, errlog, sample_codes = b.get_sample_class().csv2dict(
-                open(args.infile), with_report=True, delimiter=delim)
+        with open(args.infile) as f:
+            dict_samples, errlog, sample_codes = b.get_sample_class().csv2dict(
+                    f, with_report=True, delimiter=delim)
 
         if dict_samples is None:
             cout('Error processing sample info file')
@@ -336,7 +341,8 @@ def do_initsample(args, dbh):
             cexit('Terminated!')
 
     elif ext in ['.json', '.yaml']:
-        payload = yaml.load(open(args.infile))
+        with open(args.infile) as f:
+            payload = yaml.load(f)
         sample_codes = payload['codes']
         dict_samples = payload['samples']
 
@@ -360,25 +366,24 @@ def do_initsample(args, dbh):
             if not db_sample:
                 db_sample = b.add_sample(sample_code)
                 inserted += 1
-                cout('INFO - sample: %s added.' % db_sample.code)
+                cout(f'INFO - sample: {db_sample.code} added.')
                 db_sample.location = null_location
                 # db_sample.subject = null_subject
                 # print(d_sample)
                 # dbh.session().flush([db_sample])
 
             else:
-                cout('INFO - sample: %s being updated...' % db_sample.code)
+                cout(f'INFO - sample: {db_sample.code} being updated...')
                 updated += 1
 
             db_sample.update(d_sample)
             session.flush([db_sample])
 
-    cout('INFO - inserted new %d sample(s), updated %d sample(s)' %
-         (inserted, updated))
+    cout(f'INFO - inserted new {inserted} sample(s), updated {updated} sample(s)')
 
     return
 
-    inrows = csv.reader(open(args.infile),
+    inrows = csv_reader(open(args.infile),
                         delimiter=',' if args.infile.endswith('.csv')
                         else '\t')
 
@@ -388,67 +393,61 @@ def do_initsample(args, dbh):
     for row in inrows:
         s = b.add_sample(row[0])
         counter += 1
-        cout('INFO - sample: %s added.' % s.code)
+        cout(f'INFO - sample: {s.code} added.')
 
-    cout('INFO - number of new sample(s): %d' % counter)
+    cout(f'INFO - number of new sample(s): {counter}')
 
 
 def do_uploadfsa(args, dbh):
 
-    cout('Uploading FSA files from input file: %s' % args.infile)
+    cout(f'Uploading FSA files from input file: {args.infile}')
 
     b = dbh.get_batch(args.batch)
 
-    inrows = csv.DictReader(open(args.infile),
-                            delimiter=',' if args.infile.endswith('.csv')
-                            else '\t')
-    # next(inrows)
+    with open(args.infile) as infile_fh:
+        inrows = DictReader(infile_fh,
+                                delimiter=',' if args.infile.endswith('.csv')
+                                else '\t')
+        # next(inrows)
 
-    total_fsa = 0
-    line_counter = 1
-    for r in inrows:
+        total_fsa = 0
+        line_counter = 1
+        for r in inrows:
 
-        line_counter += 1
+            line_counter += 1
 
-        # if not row[0] or row[0].startswith('#'):
-        #    continue
-        if not (r['FILENAME'] and r['SAMPLE']) or '#' in [r['FILENAME'][0],
-                                                          r['SAMPLE'][0]]:
-            continue
+            if not (r['FILENAME'] and r['SAMPLE']) or '#' in [r['FILENAME'][0],
+                                                              r['SAMPLE'][0]]:
+                continue
 
-        # if len(row) < 3:
-        #    cerr('ERR - line %d only has %d item(s)' % (line_counter,
-        #                                                len(row)))
+            sample_code, fsa_filename, fsa_panel = r['SAMPLE'], r['FILENAME'],
+            r['PANEL']
+            if r['OPTIONS']:
+                options = tokenize(r['OPTIONS'])
+            else:
+                options = None
 
-        sample_code, fsa_filename, fsa_panel = r['SAMPLE'], r['FILENAME'],
-        r['PANEL']
-        if r['OPTIONS']:
-            options = tokenize(r['OPTIONS'])
-        else:
-            options = None
+            try:
 
-        try:
+                s = b.search_sample(sample_code)
+                if not s:
+                    cerr(f'ERR - sample {sample_code} does not exist')
+                    sys_exit(1)
 
-            s = b.search_sample(sample_code)
-            if not s:
-                cerr('ERR - sample %s does not exist' % sample_code)
-                sys.exit(1)
+                with open(args.indir + '/' + fsa_filename, 'rb') as f:
+                    trace = f.read()
 
-            with open(args.indir + '/' + fsa_filename, 'rb') as f:
-                trace = f.read()
+                a = s.add_fsa_assay(trace, filename=fsa_filename,
+                                    panel_code=fsa_panel, options=options,
+                                    species=args.species, dbhandler=dbh)
+                cerr(f'INFO - sample: {s.code} assay: {a.filename} panel: {fsa_panel} has been uploaded')
 
-            a = s.add_fsa_assay(trace, filename=fsa_filename,
-                                panel_code=fsa_panel, options=options,
-                                species=args.species, dbhandler=dbh)
-            cerr('INFO - sample: %s assay: %s panel: %s has been uploaded' %
-                 (s.code, a.filename, fsa_panel))
+            except Exception as exc:
 
-        except Exception as exc:
-
-            if not args.test:
-                raise
-            cerr('ERR - line %d' % line_counter)
-            cerr(' => %s' % str(exc))
+                if not args.test:
+                    raise
+                cerr(f'ERR - line {line_counter}')
+                cerr(f' => {str(exc)}')
 
 
 def do_reassign(args, dbh):
@@ -493,8 +492,7 @@ def do_reassignmarker(args, dbh):
         if args.panel and assay.panel.code == args.panel:
             for c in assay.channels:
                 if c.dye.upper() == args.dye.upper():
-                    print("%s reassign dye %s -- %s >> %s" %
-                          (assay.filename, c.dye, c.marker.code, marker.code))
+                    print(f"{assay.filename} reassign dye {c.dye} -- {c.marker.code} >> {marker.code}")
                     c.marker = marker
                     if marker.code == 'undefined':
                         c.status = channelstatus.unassigned
@@ -522,8 +520,7 @@ def do_initbin(args, dbh):
     print(markers)
     for m in markers:
         m.initbins(start_range, end_range, batch)
-        cerr('INFO  - bin for marker %s with batch %s has been created.' %
-             (m.label, batch.code))
+        cerr(f'INFO  - bin for marker {m.label} with batch {batch.code} has been created.')
 
 
 def do_viewbin(args, dbh):
@@ -535,13 +532,11 @@ def do_viewbin(args, dbh):
     batch = dbh.get_batch(args.batch or 'default')
 
     for m in markers:
-        cout('Marker: %s' % m.label)
+        cout(f'Marker: {m.label}')
         cout('    Bin   Mean   25%P   75%P   Width')
         cout('  ====================================')
         for binset in m.get_bin(batch).sortedbins:
-            cout('   %3d  %5.2f  %5.2f  %5.2f  %4.2f' %
-                 (binset[0], binset[1], binset[2], binset[3],
-                  binset[3]-binset[2]))
+            cout(f'   {binset[0]:3d}  {binset[1]:5.2f}  {binset[2]:5.2f}  {binset[3]:5.2f}  {binset[3]-binset[2]:4.2f}')
 
 
 def do_updatebins(args, dbh):
@@ -557,8 +552,7 @@ def do_updatebins(args, dbh):
         marker = dbh.get_marker(marker_label)
         binset = marker.get_bin(batch, recursive=False)
         binset.bins = marker_data['bins']
-        cerr('I: Updating bins for marker: %s batch: %s' % (marker.label,
-                                                            batch.code))
+        cerr(f'I: Updating bins for marker: {marker.label} batch: {batch.code}')
 
 
 def do_removebatch(args, dbh):
@@ -566,7 +560,7 @@ def do_removebatch(args, dbh):
     batch = dbh.get_batch(args.batch)
     batch_code = batch.code
     dbh.session().delete(batch)
-    cerr('INFO - batch %s has been removed' % batch_code)
+    cerr(f'INFO - batch {batch_code} has been removed')
 
 
 def do_removefsa(args, dbh):
@@ -577,14 +571,13 @@ def do_removefsa(args, dbh):
     if batch and not (args.sample or args.fsa or args.fsaid or args.panel):
         # remove all assay in this batch
         batch.remove_assays()
-        cerr('INFO - removing all assays from batch %s' % batch.code)
+        cerr(f'INFO - removing all assays from batch {batch.code}')
     else:
         sess = dbh.session()
         for (assay, sample_code) in assay_list:
             assay_filename = assay.filename
             sess.delete(assay)
-            cerr('INFO - removing assay %s | %s' % (sample_code,
-                                                    assay_filename))
+            cerr(f'INFO - removing assay {sample_code} | {assay_filename}')
 
 
 def do_clearassay(args, dbh):
@@ -596,8 +589,7 @@ def do_setbinbatch(args, dbh):
     batch = dbh.get_batch(args.batch)
     bin_batch = dbh.get_batch(args.setbinbatch)
     batch.bin_batch = bin_batch
-    cerr('INFO - bins for batch %s has been set to batch %s'
-         % (batch.code, bin_batch.code))
+    cerr(f'INFO - bins for batch {batch.code} has been set to batch {bin_batch.code}')
 
 
 def do_exportfsa(args, dbh):
@@ -606,78 +598,70 @@ def do_exportfsa(args, dbh):
 
     outdir = None
     if args.outdir:
-        os.makedirs(args.outdir)
+        makedirs(args.outdir)
         outdir = args.outdir + '/'
 
-    if args.outfile:
-        outfile = open(args.outfile, 'w')
-    else:
-        outfile = sys.stdout
-    outfile.write('FILENAME\tSAMPLE\tPANEL\tOPTIONS\n')
+    with (open(args.outfile, 'w') if args.outfile
+          else nullcontext(stdout)) as outfile:
+        outfile.write('FILENAME\tSAMPLE\tPANEL\tOPTIONS\n')
 
-    for (assay, sample_code) in assay_list:
-        if outdir:
-            with open(outdir + assay.filename, 'wb') as f:
-                f.write(assay.raw_data)
-        exclude = 'exclude=%s' % assay.exclude if assay.exclude else ''
-        outfile.write('%s\t%s\t%s\t%s\n' % (assay.filename, sample_code,
-                      assay.panel.code, exclude))
-
-    outfile.close()
+        for (assay, sample_code) in assay_list:
+            if outdir:
+                with open(outdir + assay.filename, 'wb') as f:
+                    f.write(assay.raw_data)
+            exclude = f'exclude={assay.exclude}' if assay.exclude else ''
+            outfile.write(f'{assay.filename}\t{sample_code}\t{assay.panel.code}\t{exclude}\n')
 
 
 def do_renamefsa(args, dbh):
 
-    cout('Renaming FSA files from input file: %s' % args.infile)
+    cout(f'Renaming FSA files from input file: {args.infile}')
 
     b = dbh.get_batch(args.batch)
 
-    inrows = csv.DictReader(open(args.infile),
-                            delimiter=',' if args.infile.endswith('.csv')
-                            else '\t')
-    # next(inrows)
+    with open(args.infile) as infile_fh:
+        inrows = DictReader(infile_fh,
+                                delimiter=',' if args.infile.endswith('.csv')
+                                else '\t')
+        # next(inrows)
 
-    total_fsa = 0
-    line_counter = 1
-    for r in inrows:
+        total_fsa = 0
+        line_counter = 1
+        for r in inrows:
 
-        line_counter += 1
+            line_counter += 1
 
-        # if not row[0] or row[0].startswith('#'):
-        #    continue
-        if not (r['FILENAME'] and r['SAMPLE']) or '#' in [r['FILENAME'][0],
-                                                          r['SAMPLE'][0]]:
-            continue
+            if not (r['FILENAME'] and r['SAMPLE']) or '#' in [r['FILENAME'][0],
+                                                              r['SAMPLE'][0]]:
+                continue
 
-        try:
-            sample_code, fsa_filename, fsa_new_filename = r['SAMPLE'],
-            r['FILENAME'], r['NEWNAME']
-            s = b.search_sample(sample_code)
-            a = s.assays.filter(dbh.Assay.filename == fsa_filename).one()
-            a.filename = fsa_new_filename
+            try:
+                sample_code, fsa_filename, fsa_new_filename = r['SAMPLE'],
+                r['FILENAME'], r['NEWNAME']
+                s = b.search_sample(sample_code)
+                a = s.assays.filter(dbh.Assay.filename == fsa_filename).one()
+                a.filename = fsa_new_filename
 
-        except:
-            cerr('Error in executing line %d' % line_counter)
-            raise
+            except:
+                cerr(f'Error in executing line {line_counter}')
+                raise
 
 
 def do_exportpeaks(args, dbh):
 
-    cerr('Exporting all peaks to file: %s' % args.outfile)
+    cerr(f'Exporting all peaks to file: {args.outfile}')
 
     b = dbh.get_batch(args.batch)
 
     assay_list = get_assay_list(args, dbh)
 
-    if args.outfile:
-        outfile = open(args.outfile, 'w')
-    else:
-        outfile = sys.stdout
-    outfile.write('SAMPLE\tFILENAME\tID\tOPTIONS\n')
+    with (open(args.outfile, 'w') if args.outfile
+          else nullcontext(stdout)) as outfile:
+        outfile.write('SAMPLE\tFILENAME\tID\tOPTIONS\n')
 
-    for (assay, sample_code) in assay_list:
-        pass
-        # pass for now, continue later
+        for (assay, sample_code) in assay_list:
+            pass
+            # pass for now, continue later
 
 
 def do_viewpeakcachedb(args, dbh):
@@ -693,9 +677,9 @@ def do_viewpeakcachedb(args, dbh):
         batch_code = bytes(key.split(b'|', 1)[0])
         batches[batch_code] += 1
 
-    cout('Peakcache DB: %s' % args.peakcachedb)
+    cout(f'Peakcache DB: {args.peakcachedb}')
     for (k, v) in batches.items():
-        cout('\t%s\t%4d' % (k.decode(), v))
+        cout(f'\t{k.decode()}\t{v:4d}')
 
 
 def do_showsample(args, dbh):
@@ -705,27 +689,20 @@ def do_showsample(args, dbh):
     batch = dbh.get_batch(args.batch)
     for code in args.sample.split(','):
         sample = batch.search_sample(code)
-        cout('Sample: %s' % sample.code)
+        cout(f'Sample: {sample.code}')
         for fsa in sample.assays:
             marker_codes = [c.marker.code for c in fsa.channels
                             if c.status == channelstatus.assigned]
-            cout(' % 3d - %s | %s | %s' %
-                 (fsa.id, fsa.filename, fsa.panel.code,
-                  ','.join(marker_codes)))
+            cout(f' {fsa.id:3d} - {fsa.filename} | {fsa.panel.code} | {",".join(marker_codes)}')
 
 
 def do_dumppeaks(args, dbh):
 
-    cerr('Dumping all peaks to file: %s' % args.outfile)
+    cerr(f'Dumping all peaks to file: {args.outfile}')
 
     b = dbh.get_batch(args.batch)
 
     assay_list = get_assay_list(args, dbh)
-
-    if args.outfile:
-        outfile = open(args.outfile, 'w')
-    else:
-        outfile = sys.stdout
 
     data = {}
     for (assay, sample_code) in assay_list:
@@ -742,7 +719,9 @@ def do_dumppeaks(args, dbh):
 
         data[assay.filename] = assay_data
 
-    yaml.dump(data, outfile)
+    with (open(args.outfile, 'w') if args.outfile
+          else nullcontext(stdout)) as outfile:
+        yaml.dump(data, outfile)
 
 
 # helpers
@@ -751,12 +730,12 @@ def get_assay_list(args, dbh):
 
     if not args.batch:
         cerr('ERR - need --batch argument!')
-        sys.exit(1)
+        sys_exit(1)
 
     batch = dbh.get_batch(args.batch)
     if not batch:
-        cerr('ERR - batch %s not found!' % args.batch)
-        sys.exit(1)
+        cerr(f'ERR - batch {args.batch} not found!')
+        sys_exit(1)
 
     samples = []
     if args.sample:
@@ -785,5 +764,5 @@ def get_assay_list(args, dbh):
                 continue
             assay_list.append((assay, sample.code))
 
-    cerr('INFO - number of assays to be processed: %d' % len(assay_list))
+    cerr(f'INFO - number of assays to be processed: {len(assay_list)}')
     return assay_list

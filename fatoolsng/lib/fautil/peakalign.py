@@ -3,7 +3,6 @@ from fatoolsng.lib.const import alignmethod
 from fatoolsng.lib.fautil import dpalign as dp
 
 from numpy import poly1d
-import pprint
 cdbg = cerr
 
 
@@ -19,22 +18,20 @@ def fast_align(data, ladders, peaks, qcfunc):
 
     if len(hq_peaks) > 2 and (len(hq_peaks) >= len(ladders) - 1
                               or len(peaks) == len(ladders)):
-        cerr(' -> fast_align() HQ peak: %d => ' % len(hq_peaks), nl=False)
+        cerr(f' -> fast_align() HQ peak: {len(hq_peaks)} => ', nl=False)
         hq_result = do_fast_align(hq_peaks, ladders, peaks)
         (hq_score, hq_msg) = qcfunc(hq_result, method='strict')
-        cerr('%d | %4.2f | %6.2f | %3.2f' %
-             (len(hq_result[3]), hq_result[0], hq_result[1], hq_score))
+        cerr(f'{len(hq_result[3])} | {hq_result[0]:4.2f} | {hq_result[1]:6.2f} | {hq_score:3.2f}')
         if hq_score > 0.95:
             return (hq_score, hq_msg, hq_result, alignmethod.fast_hq)
 
     mq_peaks = [p for p in peaks if p.qscore >= 0.75]
 
     if len(mq_peaks) > len(hq_peaks) and len(mq_peaks) >= len(ladders) - 1:
-        cerr(' -> fast_align() MQ peak: %d => ' % len(mq_peaks), nl=False)
+        cerr(f' -> fast_align() MQ peak: {len(mq_peaks)} => ', nl=False)
         mq_result = do_fast_align(mq_peaks, ladders, peaks)
         (mq_score, mq_msg) = qcfunc(mq_result, method='strict')
-        cerr('%d | %4.2f | %6.2f | %3.2f' %
-             (len(mq_result[3]), mq_result[0], mq_result[1], mq_score))
+        cerr(f'{len(mq_result[3])} | {mq_result[0]:4.2f} | {mq_result[1]:6.2f} | {mq_score:3.2f}')
         if mq_score > 0.95:
             return (mq_score, mq_msg, mq_result, alignmethod.fast_mq)
 
@@ -105,7 +102,7 @@ def greedy_align(data, ladders, peaks, qcfunc):
 
         # perform iterative alignment
         cerr('=> Iterative alignment')
-        pprint.pprint(initial_peak_pairs)
+        print(initial_peak_pairs)
         result = iterative_align(peaks, ladders, peak_pairs, peaks)
         (score, msg) = qcfunc(result[:4], 'relax')
         if score > 0.99:
@@ -113,9 +110,7 @@ def greedy_align(data, ladders, peaks, qcfunc):
 
         dp_score, dp_rss, dp_z, dp_peaks = result[:4]
 
-        cdbg('Current best score: %3.2f dp: %3.2f rss: %4.2f' % (score,
-                                                                 dp_score,
-                                                                 dp_rss))
+        cdbg(f'Current best score: {score:3.2f} dp: {dp_score:3.2f} rss: {dp_rss:4.2f}')
         cdbg('Start aligning by shifting pairs...')
 
         counter = 0
@@ -200,8 +195,7 @@ def progressive_align(peaks, ladders, peak_pairs):
     z, rss = dp.estimate_z(*zip(*peak_pairs))
     dp_score, dp_rss, dp_z, dp_peaks, S, D = dp.align_peaks(ladders, peaks, z,
                                                             rss)
-    cdbg(' progressive_align() ==> %4.2f | %5.2f | %d' % (dp_score, dp_rss,
-                                                          len(dp_peaks)))
+    cdbg(f' progressive_align() ==> {dp_score:4.2f} | {dp_rss:5.2f} | {len(dp_peaks)}')
     return (dp_score, dp_rss, dp_z, dp_peaks, S, D)
 
 

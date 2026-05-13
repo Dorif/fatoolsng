@@ -1,9 +1,9 @@
-import tkinter
+from tkinter import Canvas, Tk
 
 from fatoolsng.lib.fautil.wavelen2rgb import wavelen2rgb
 
 
-class SimplePlot(tkinter.Canvas):
+class SimplePlot(Canvas):
 
     def plot_channel(self, channel):
 
@@ -20,7 +20,7 @@ class SimplePlot(tkinter.Canvas):
 
 def viewer(trace):
 
-    root = tkinter.Tk()
+    root = Tk()
 
     widget = SimplePlot(root)
     widget.pack(fill='both', expand=1)

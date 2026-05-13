@@ -2,12 +2,11 @@
 # content commands that need to update/change the database content should be
 # in facmd toolset
 
-import argparse
+from argparse import ArgumentParser
 from ruamel.yaml import YAML as yaml
 from fatoolsng.lib.analytics.query import Query, load_yaml
 from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler
 from fatoolsng.lib import params
-from pprint import pprint
 
 
 def init_argparser(parser=None):
@@ -15,7 +14,7 @@ def init_argparser(parser=None):
     if parser:
         p = parser
     else:
-        p = argparse.ArgumentParser('analyze')
+        p = ArgumentParser('analyze')
 
     p.add_argument('--sqldb', default=False, help='SQLite3 database filename')
 
@@ -120,8 +119,8 @@ def do_binsummary(args, dbh):
         query = get_query(args, dbh)
         analytical_sets = query.get_filtered_analytical_sets()
         report = summarize_bins(analytical_sets)
-        cerr('I: Bin summary iteration %d' % i)
-        pprint(report)
+        cerr(f'I: Bin summary iteration {i}')
+        print(report)
 
         markers = []
         for (marker_id, updated_bins) in report.items():
@@ -137,7 +136,7 @@ def do_binsummary(args, dbh):
         count = 1
         for sample_id in analytical_sets.sample_ids:
             sample = dbh.get_sample_by_id(sample_id)
-            cerr('\rI: [%d/%d] - Binning sample...' % (count, N), nl=False)
+            cerr(f'\rI: [{count}/{N}] - Binning sample...', nl=False)
             for assay in sample.assays:
                 assay.bin(scanning_parameter.nonladder, markers)
             count += 1
@@ -153,7 +152,7 @@ def do_binsummary(args, dbh):
 
         with open(args.outfile, 'wt') as f:
             yaml.dump(output_dict, f)
-        cerr('I: writing bins to %s' % args.outfile)
+        cerr(f'I: writing bins to {args.outfile}')
 
 
 def do_export(args, dbh):
@@ -165,7 +164,7 @@ def do_export(args, dbh):
     if analytical_sets.total_samples <= 0:
         cexit('ERR - query does not yield any sample data')
     else:
-        cerr('INFO - total sampel number: %d' % analytical_sets.total_samples)
+        cerr(f'INFO - total sampel number: {analytical_sets.total_samples}')
     output = export(analytical_sets, dbh, outfile=args.outfile,
                     format=args.outformat)
     cout('Done.')
@@ -192,7 +191,7 @@ def get_analytical_sets(args, dbh):
 
     query = load_yaml(open(args.yamlquery).read())
     sample_sets = query['selector'].get_sample_sets(dbh)
-    pprint(sample_sets)
+    print(sample_sets)
 
 
 def get_query(args, dbh):
@@ -214,11 +213,11 @@ def make_sample_report(sample_sets):
     _ = lines.append
     _('SAMPLE SUMMARY')
     _('================================')
-    _('Group: %d' % len(sample_sets))
-    _('Total samples: %d' % sample_sets.total_samples)
+    _(f'Group: {len(sample_sets)}')
+    _(f'Total samples: {sample_sets.total_samples}')
     _('--------------------------------------------')
     for s in sample_sets:
-        _('  %-20s  %4d' % (s.label, s.N))
+        _(f'  {s.label:<20}  {s.N:4d}')
     _('--------------------------------------------')
 
     return '\n'.join(lines)
@@ -236,17 +235,15 @@ def make_allele_report(summaries, dbh):
 
     for label in summaries:
         summary = summaries[label]['summary']
-        _('Sample Set: %s' % label)
+        _(f'Sample Set: {label}')
 
         for marker_id in summary:
-            _('    Marker ID: %d' % marker_id)
-            _('    Marker code: %s' % dbh.get_marker_by_id(marker_id).label)
-            _('    Unique alleles: %d' % summary[marker_id]['unique_allele'])
-            _('    Total alleles: %d' % summary[marker_id]['total_allele'])
+            _(f'    Marker ID: {marker_id}')
+            _(f"    Marker code: {dbh.get_marker_by_id(marker_id).label}")
+            _(f"    Unique alleles: {summary[marker_id]['unique_allele']}")
+            _(f"    Total alleles: {summary[marker_id]['total_allele']}")
 
             for data in summary[marker_id]['alleles']:
-                _('        %3d  %5.3f  %3d  %5.2f - %5.2f  %5.2f  %4.2f' %
-                  (data[0], data[1], data[2], data[4], data[5], data[8],
-                   data[6]))
+                _(f'        {data[0]:3d}  {data[1]:5.3f}  {data[2]:3d}  {data[4]:5.2f} - {data[5]:5.2f}  {data[8]:5.2f}  {data[6]:4.2f}')
 
     return '\n'.join(lines)

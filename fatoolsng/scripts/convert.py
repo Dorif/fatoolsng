@@ -1,5 +1,5 @@
-import argparse
-import csv
+from argparse import ArgumentParser
+from csv import DictReader
 from collections import defaultdict
 from fatoolsng.lib.utils import cerr, cexit, get_dbhandler
 from fatoolsng.lib.fautil.traceio import read_abif_stream
@@ -8,7 +8,7 @@ from fatoolsng.lib.fautil.traceio import read_abif_stream
 def init_argparser(parser=None):
 
     if parser is None:
-        p = argparse.ArgumentParser('convert')
+        p = ArgumentParser('convert')
     else:
         p = parser
 
@@ -60,7 +60,7 @@ def do_fsa2tab(args):
             t = read_abif_stream(instream)
         channels = t.get_channels()
         names = ['"' + c + '"' for c in channels]
-        print("Dyes: %s" % ' '.join(channels))
+        print(f"Dyes: {' '.join(channels)}")
         with open(infile + '.raw.tab', 'wt') as out:
             out.write('\t'.join(names))
             out.write('\n')
@@ -84,55 +84,51 @@ def do_genemapper2tab(args, dbh):
     for infile in args.infiles:
 
         sample_set = defaultdict(list)
-        csv_in = csv.DictReader(open(infile))
-        assay_list = {}
+        with open(infile) as csv_fh:
+            csv_in = DictReader(csv_fh)
+            assay_list = {}
 
-        for row in csv_in:
-            assay = row['Sample File']
-            sample = row['Sample Name']
-            run_name = row['Run Name']
-            panel = row['Panel']
-            marker = row['Marker']
+            for row in csv_in:
+                assay = row['Sample File']
+                sample = row['Sample Name']
+                run_name = row['Run Name']
+                panel = row['Panel']
+                marker = row['Marker']
 
-            if assay in assay_list:
-                if assay_list[assay] != run_name:
-                    cexit('Inconsistence or duplicate FSA file name: %s' %
-                          assay)
-            else:
-                assay_list[assay] = run_name
+                if assay in assay_list:
+                    if assay_list[assay] != run_name:
+                        cexit(f'Inconsistence or duplicate FSA file name: {assay}')
+                else:
+                    assay_list[assay] = run_name
 
-            token = (sample, assay, panel)
-            sample_set[token].append(marker)
+                token = (sample, assay, panel)
+                sample_set[token].append(marker)
 
-        outfile = open(infile + '.tab', 'w')
-        outfile.write('SAMPLE\tASSAY\tPANEL\tOPTIONS\n')
+        with open(infile + '.tab', 'w') as outfile:
+            outfile.write('SAMPLE\tASSAY\tPANEL\tOPTIONS\n')
 
-        for token in sorted(sample_set.keys()):
-            sample, assay, panel = token
-            markers = sample_set[token]
+            for token in sorted(sample_set.keys()):
+                sample, assay, panel = token
+                markers = sample_set[token]
 
-            db_panel = dbh.get_panel(panel)
-            s_panel_markers = set(x.upper()
-                                  for x in db_panel.get_marker_codes())
-            s_assay_markers = set(('%s/%s' % (species, x)
-                                   if (species and '/' not in x)
-                                   else x).upper()
-                                  for x in markers)
+                db_panel = dbh.get_panel(panel)
+                s_panel_markers = set(x.upper()
+                                      for x in db_panel.get_marker_codes())
+                s_assay_markers = set((f'{species}/{x}'
+                                       if (species and '/' not in x)
+                                       else x).upper()
+                                      for x in markers)
 
-            excludes = s_panel_markers - s_assay_markers
-            if s_assay_markers - s_panel_markers:
-                cexit('ERROR inconsistent marker(s) for sample %s assay %s: %s' %
-                      (sample, assay, str(s_assay_markers-s_panel_markers)))
+                excludes = s_panel_markers - s_assay_markers
+                if s_assay_markers - s_panel_markers:
+                    cexit(f'ERROR inconsistent marker(s) for sample {sample} assay {assay}: {str(s_assay_markers-s_panel_markers)}')
 
-            if excludes:
-                excludes = 'exclude=%s' % ','.join(excludes)
-            else:
-                excludes = ''
+                if excludes:
+                    excludes = f"exclude={','.join(excludes)}"
+                else:
+                    excludes = ''
 
-            outfile.write('%s\t%s\t%s\t%s\n' % (sample, assay, panel,
-                                                excludes))
-
-        outfile.close()
+                outfile.write(f'{sample}\t{assay}\t{panel}\t{excludes}\n')
 
 
 def do_checkfsa(args):
@@ -140,27 +136,26 @@ def do_checkfsa(args):
     fsadir = args.fsadir or '.'
 
     for infile in args.infiles:
-        data = csv.DictReader(open(infile), delimiter='\t')
+        with open(infile) as csv_fh:
+            data = DictReader(csv_fh, delimiter='\t')
 
-        files = {}
-        line = 2
-        for row in data:
-            sample = row['SAMPLE']
-            if sample.startswith('#'):
-                line += 1
-                continue
-            assay_file = row['ASSAY']
-            panel = row['PANEL']
-            if assay_file in files:
-                cerr('WARN file: %s - duplicated assay: %s for sample %s panel %s' %
-                     (infile, assay_file, sample, panel))
-            files[assay_file] = True
-            try:
-                with open('%s/%s' % (fsadir, assay_file), 'rb') as instream:
-                    t = read_abif_stream(instream)
-                line += 1
-            except:
-                cerr('ERR file: %s line: %d  - sample: %s assay: %s' %
-                     (infile, line, sample, assay_file))
-                # raise
-                line += 1
+            files = {}
+            line = 2
+            for row in data:
+                sample = row['SAMPLE']
+                if sample.startswith('#'):
+                    line += 1
+                    continue
+                assay_file = row['ASSAY']
+                panel = row['PANEL']
+                if assay_file in files:
+                    cerr(f'WARN file: {infile} - duplicated assay: {assay_file} for sample {sample} panel {panel}')
+                files[assay_file] = True
+                try:
+                    with open(f'{fsadir}/{assay_file}', 'rb') as instream:
+                        t = read_abif_stream(instream)
+                    line += 1
+                except:
+                    cerr(f'ERR file: {infile} line: {line}  - sample: {sample} assay: {assay_file}')
+                    # raise
+                    line += 1

@@ -2,7 +2,7 @@
 # haploset.py
 #
 
-class HaploSet(object):
+class HaploSet:
 
     def __init__(self, analytical_set):
         self._analytical_set = analytical_set

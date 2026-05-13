@@ -1,6 +1,6 @@
 
 
-class SampleSet(object):
+class SampleSet:
 
     def __init__(self, sample_ids, label=None, colour=None):
         """ sample_ids is list-like object """
@@ -11,8 +11,7 @@ class SampleSet(object):
         self.colour = colour
 
     def __repr__(self):
-        return '<SampleSet: %s with %d sample(s)' % (self.label,
-                                                     len(self.sample_ids))
+        return f'<SampleSet: {self.label} with {len(self.sample_ids)} sample(s)'
 
     def filtered(self, sample_ids):
         assert type(sample_ids) is set, "sample_ids must be a set type"

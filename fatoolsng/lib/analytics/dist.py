@@ -28,7 +28,7 @@ def simple_distance(genotable):
     return (m, v)
 
 
-class DistanceMatrix(object):
+class DistanceMatrix:
     """ this class holds distance matrix result
     """
 

@@ -1,6 +1,6 @@
-import sys
-import argparse
-import transaction
+from sys import exit as sys_exit, stdout
+from argparse import ArgumentParser
+from transaction import manager as transaction_manager
 from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler, set_verbosity
 from fatoolsng.lib import params
 from fatoolsng.lib.const import assaystatus, peaktype
@@ -12,7 +12,7 @@ def init_argparser(parser=None):
     if parser:
         p = parser
     else:
-        p = argparse.ArgumentParser('facmd')
+        p = ArgumentParser('facmd')
 
     p.add_argument('--sqldb', default=False, help='SQLite3 database filename')
 
@@ -118,7 +118,7 @@ def init_argparser(parser=None):
 def main(args):
 
     if args.commit:
-        with transaction.manager:
+        with transaction_manager:
             do_facmd(args)
             cerr('** COMMIT to database **')
     else:
@@ -126,7 +126,7 @@ def main(args):
         if not (args.test or args.y):
             keys = input('Do you want to continue [y/n]? ')
             if not keys.lower().strip().startswith('y'):
-                sys.exit(1)
+                sys_exit(1)
         do_facmd(args)
 
 
@@ -155,7 +155,7 @@ def do_facmd(args, dbh=None):
             do_arr[i]
             executed += 1
     if executed:
-        cerr('INFO - executed %d command(s)' % executed)
+        cerr(f'INFO - executed {executed} command(s)')
     else:
         cerr('WARN - unknown command, nothing to do!')
 
@@ -167,8 +167,7 @@ def do_clear(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('Clearing sample: %s assay %s [%d/%d]' %
-             (sample_code, assay.filename, counter, len(assay_list)))
+        cerr(f'Clearing sample: {sample_code} assay {assay.filename} [{counter}/{len(assay_list)}]')
 
         assay.clear()
         counter += 1
@@ -193,8 +192,7 @@ def do_scan(args, dbh):
 
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Scanning: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Scanning: {sample_code} | {assay.filename}')
 
         assay.scan(scanning_parameter, peakdb=peakdb)
         counter += 1
@@ -209,8 +207,7 @@ def do_preannotate(args, dbh):
 
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Preannotating: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Preannotating: {sample_code} | {assay.filename}')
 
         assay.preannotate(scanning_parameter)
         counter += 1
@@ -223,8 +220,7 @@ def do_alignladder(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Aligning: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Aligning: {sample_code} | {assay.filename}')
         (dpscore, rss, no_of_peaks, no_of_ladders, qcscore, remarks,
          method) = assay.alignladder(args.excluded_peaks,
                                      force_mode=args.force)
@@ -232,14 +228,11 @@ def do_alignladder(args, dbh):
             msg = 'W! low ladder QC'
         else:
             msg = 'I:'
-        cerr('%s [%d/%d] - Score %3.2f %4.2f %5.2f %d/%d %s for %s | %s'
-             % (msg, counter, len(assay_list), qcscore, dpscore, rss,
-                no_of_peaks, no_of_ladders, method, sample_code,
-                assay.filename))
+        cerr(f'{msg} [{counter}/{len(assay_list)}] - Score {qcscore:3.2f} {dpscore:4.2f} {rss:5.2f} {no_of_peaks}/{no_of_ladders} {method} for {sample_code} | {assay.filename}')
         if remarks:
-            cerr('%s - %s' % (msg, ' | '.join(remarks)))
+            cerr(f"{msg} - {' | '.join(remarks)}")
         if qcscore != 1.0 and args.abort:
-            sys.exit(1)
+            sys_exit(1)
 
         counter += 1
 
@@ -253,8 +246,7 @@ def do_call(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Calling: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Calling: {sample_code} | {assay.filename}')
         assay.call(scanning_parameter)
         counter += 1
 
@@ -273,8 +265,7 @@ def do_bin(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Binning: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Binning: {sample_code} | {assay.filename}')
         assay.bin(scanning_parameter, markers)
         counter += 1
 
@@ -298,8 +289,7 @@ def do_postannotate(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('I: [%d/%d] - Post-annotating: %s | %s' %
-             (counter, len(assay_list), sample_code, assay.filename))
+        cerr(f'I: [{counter}/{len(assay_list)}] - Post-annotating: {sample_code} | {assay.filename}')
         assay.postannotate(scanning_parameter, markers)
         counter += 1
 
@@ -331,7 +321,7 @@ def do_findpeaks(args, dbh):
     counter = 1
     cerr('', nl=False)
     for (assay, sample_code) in assay_list:
-        cerr('\rI: [%d/%d] processing assay' % (counter, len(assay_list)),
+        cerr(f'\rI: [{counter}/{len(assay_list)}] processing assay',
              nl=False)
         for c in assay.channels:
             if c.marker.code == 'ladder':
@@ -364,8 +354,7 @@ def do_setallele(args, dbh):
                         (args.fromtype and allele.type != args.fromtype)):
                         continue
                     allele.type = totype
-                    cerr('I: - setting allele %d marker %s for sample %s' %
-                         (allele.bin, c.marker.label, sample_code))
+                    cerr(f'I: - setting allele {allele.bin} marker {c.marker.label} for sample {sample_code}')
 
 
 def do_showladderpca(args, dbh):
@@ -373,8 +362,7 @@ def do_showladderpca(args, dbh):
     assay_list = get_assay_list(args, dbh)
     counter = 1
     for (assay, sample_code) in assay_list:
-        cerr('Showing ladder PCA for  sample: %s assay %s [%d/%d]' %
-             (sample_code, assay.filename, counter, len(assay_list)))
+        cerr(f'Showing ladder PCA for  sample: {sample_code} assay {assay.filename} [{counter}/{len(assay_list)}]')
         assay.showladderpca()
 
 
@@ -382,7 +370,7 @@ def chk_out(outfile):
     if outfile != '-':
         return open(outfile, 'w')
     else:
-        return sys.stdout
+        return stdout
 
 
 def do_listassay(args, dbh):
@@ -403,22 +391,19 @@ def do_listpeaks(args, dbh):
         markers = None
 
     if markers:
-        cerr('Markers: %s' % ','.join(m.code for m in markers))
+        cerr(f"Markers: {','.join(m.code for m in markers)}")
 
     out_stream = chk_out(args.outfile)
     out_stream.write('SAMPLE\tFILENAME\tDYE\tRTIME\tHEIGHT\tSIZE\tSCORE\tID\n')
 
     for (assay, sample_code) in assay_list:
-        cout('Sample: %s assay: %s' % (sample_code, assay.filename))
+        cout(f'Sample: {sample_code} assay: {assay.filename}')
         for channel in assay.channels:
             if markers and channel.marker not in markers:
                 continue
-            cout('Marker => %s | %s [%d]' % (channel.marker.code, channel.dye,
-                 len(channel.alleles)))
+            cout(f'Marker => {channel.marker.code} | {channel.dye} [{len(channel.alleles)}]')
             for p in channel.alleles:
-                out_stream.write('%s\t%s\t%s\t%d\t%d\t%5.3f\t%3.2f\t%d\n' %
-                                 (sample_code, assay.filename, channel.dye,
-                                  p.rtime, p.height, p.size, p.qscore, p.id))
+                out_stream.write(f'{sample_code}\t{assay.filename}\t{channel.dye}\t{p.rtime:d}\t{p.height:d}\t{p.size:5.3f}\t{p.qscore:3.2f}\t{p.id:d}\n')
 
 
 def do_showtrace(args, dbh):
@@ -459,9 +444,7 @@ def do_showz(args, dbh):
 
         print(' => Z: ', z)
         for p in ladder_peaks:
-            print(' => %6d -> %6.2f | %4d | %5.2f' % (p.rtime, f(p.rtime),
-                                                      p.size,
-                                                      abs(f(p.rtime)-p.size)))
+            print(f' => {p.rtime:6d} -> {f(p.rtime):6.2f} | {p.size:4d} | {abs(f(p.rtime)-p.size):5.2f}')
 
         plt.plot(x, y)
         rtimes = [x[0] for x in peak_pairs]
@@ -476,12 +459,12 @@ def get_assay_list(args, dbh):
 
     if not args.batch:
         cerr('ERR - need --batch argument!')
-        sys.exit(1)
+        sys_exit(1)
 
     batch = dbh.get_batch(args.batch)
     if not batch:
-        cerr('ERR - batch %s not found!' % args.batch)
-        sys.exit(1)
+        cerr(f'ERR - batch {args.batch} not found!')
+        sys_exit(1)
 
     samples = []
     if args.sample:
@@ -505,29 +488,25 @@ def get_assay_list(args, dbh):
                 continue
             assay_list.append((assay, sample.code))
 
-    cerr('INFO - number of assays to be processed: %d' % len(assay_list))
+    cerr(f'INFO - number of assays to be processed: {len(assay_list)}')
     return assay_list
 
 
 # PRINTOUT
 
-def printout_assay(assay, outfile=sys.stdout, fmt='text'):
+def printout_assay(assay, outfile=stdout, fmt='text'):
 
     if fmt == 'tab':
-        outfile.write('%s\t%s\t%f\t%f\t%f\t%d\t%d\t%s\n' %
-                      (assay.sample.code, assay.filename,
-                       assay.score, assay.dp, assay.rss, assay.ladder_peaks,
-                       len(assay.ladder.alleles), assay.method))
+        outfile.write(f'{assay.sample.code}\t{assay.filename}\t{assay.score:f}\t{assay.dp:f}\t{assay.rss:f}\t{assay.ladder_peaks:d}\t{len(assay.ladder.alleles):d}\t{assay.method}\n')
         return ''
 
     buf = []
     _ = buf.append
 
-    _('Assay: %s -- Sample: %s' % (assay.filename, assay.sample.code))
+    _(f'Assay: {assay.filename} -- Sample: {assay.sample.code}')
     if assay.status in (assaystatus.aligned, assaystatus.called,
                         assaystatus.annotated, assaystatus.binned):
-        _(' => Score: %3.2f, DP: %5.2f, RSS: %5.2f, N-peak: %d' %
-            (assay.score, assay.dp, assay.rss, assay.ladder_peaks))
+        _(f' => Score: {assay.score:3.2f}, DP: {assay.dp:5.2f}, RSS: {assay.rss:5.2f}, N-peak: {assay.ladder_peaks}')
 
     return '\n'.join(buf)
 
@@ -537,7 +516,7 @@ def printout_assay(assay, outfile=sys.stdout, fmt='text'):
 def do_parallel_find_peaks(channel_list, peakdb):
 
     import concurrent.futures
-    import pickle
+    from pickle import dumps as pickle_dumps
 
     cerr('I: Processing channel(s)')
     total = len(channel_list)
@@ -545,13 +524,12 @@ def do_parallel_find_peaks(channel_list, peakdb):
     with concurrent.futures.ProcessPoolExecutor() as executor:
         for (tag, peaks) in executor.map(find_peaks_p, channel_list):
             if peakdb:
-                peakdb.put(tag.encode(), pickle.dumps(peaks))
+                peakdb.put(tag.encode(), pickle_dumps(peaks))
             else:
-                cout('== channel %s\n' % tag)
+                cout(f'== channel {tag}\n')
                 cout(str(peaks))
             counter += 1
-            cerr('I: [%d/%d] channel %s => %d peak(s)' % (counter, total, tag,
-                                                          len(peaks)))
+            cerr(f'I: [{counter}/{total}] channel {tag} => {len(peaks)} peak(s)')
 
 
 def find_peaks_p(args):

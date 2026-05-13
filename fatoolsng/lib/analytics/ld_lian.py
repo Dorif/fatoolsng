@@ -3,7 +3,7 @@ from fatoolsng.lib.analytics.export import export_flat
 from subprocess import Popen, PIPE
 
 
-class LianResult(object):
+class LianResult:
 
     def __init__(self, output, error, n):
         self.output = output.decode('ASCII')

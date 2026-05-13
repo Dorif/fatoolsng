@@ -10,10 +10,10 @@ http://www.gnu.org/licenses/gpl.html
 
 __version__ = '20081006a'
 
-import struct
+from struct import unpack, calcsize
 from sys import argv, stderr
 from jax.numpy import array
-import datetime
+from datetime import datetime
 from traceutils import smooth_signal, correct_baseline
 
 DEBUG = False
@@ -45,7 +45,7 @@ abitags = {b'GELP1': 2, b'PCON1': 201}
 abif_direntry = '>4slhhll4sl'
 
 
-class ABIF_DirEntry(object):
+class ABIF_DirEntry:
 
     def __init__(self, tag, no, etype, esize, num, dsize, drec, dhdl):
         self.tag = tag
@@ -66,13 +66,13 @@ class ABIF_DirEntry(object):
 
     def __repr__(self):
         if self.etype in [18, 19]:
-            return '<ABIF etype: %s, data: "%s">' % (self.etype, self.data)
+            return f'<ABIF etype: {self.etype}, data: "{self.data}">'
         elif self.num < 10 and self.etype not in [10, 11]:
-            return '<ABIF etype: %s, data: %s>' % (self.etype, str(self.data))
-        return '<ABIF etype: %s, size: %d>' % (self.etype, self.num)
+            return f'<ABIF etype: {self.etype}, data: {str(self.data)}>'
+        return f'<ABIF etype: {self.etype}, size: {self.num}>'
 
 
-class ABIF_Channel(object):
+class ABIF_Channel:
 
     def __init__(self, dye_name, wavelength, trace):
         self.dye_name = dye_name
@@ -87,7 +87,7 @@ class ABIF_Channel(object):
         return self._smooth
 
 
-class ABIF(object):
+class ABIF:
 
     def __init__(self):
         self.dir_entries = {}
@@ -113,14 +113,10 @@ class ABIF(object):
             pass
         order = self.get_data(b'FWO_1')
         order.upper()
-        t.trace_A = self.get_data(('DATA%d' %
-                                   (9 + order.index(b'A'))).encode('ASCII'))
-        t.trace_C = self.get_data(('DATA%d' %
-                                   (9 + order.index(b'C'))).encode('ASCII'))
-        t.trace_G = self.get_data(('DATA%d' %
-                                   (9 + order.index(b'G'))).encode('ASCII'))
-        t.trace_T = self.get_data(('DATA%d' %
-                                   (9 + order.index(b'T'))).encode('ASCII'))
+        t.trace_A = self.get_data(f'DATA{9 + order.index(b"A")}'.encode('ASCII'))
+        t.trace_C = self.get_data(f'DATA{9 + order.index(b"C")}'.encode('ASCII'))
+        t.trace_G = self.get_data(f'DATA{9 + order.index(b"G")}'.encode('ASCII'))
+        t.trace_T = self.get_data(f'DATA{9 + order.index(b"T")}'.encode('ASCII'))
 
         return t
 
@@ -129,7 +125,7 @@ class ABIF(object):
         results = {}
         for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
             try:
-                dye_name = self.get_data(b('DyeN%d' % idx)).decode('ASCII')
+                dye_name = self.get_data(b(f'DyeN{idx}')).decode('ASCII')
                 # below is to workaround on some strange dye name
                 if dye_name == '6FAM':
                     dye_name = '6-FAM'
@@ -138,10 +134,10 @@ class ABIF(object):
                 elif dye_name == 'Bn Joda':
                     dye_name = 'LIZ'
                 try:
-                    dye_wavelength = self.get_data(b('DyeW%d' % idx))
+                    dye_wavelength = self.get_data(b(f'DyeW{idx}'))
                 except KeyError:
                     dye_wavelength = WAVELENGTH[dye_name]
-                raw_channel = array(self.get_data(b('DATA%d' % data_idx)))
+                raw_channel = array(self.get_data(b(f'DATA{data_idx}')))
 
                 results[dye_name] = ABIF_Channel(dye_name, dye_wavelength,
                                                  raw_channel)
@@ -155,7 +151,7 @@ class ABIF(object):
 
         rdate = self.get_data(b'RUND1')
         rtime = self.get_data(b'RUNT1')
-        return datetime.datetime(rdate[0], rdate[1], rdate[2], rtime[0],
+        return datetime(rdate[0], rdate[1], rdate[2], rtime[0],
                                  rtime[1], rtime[2])
 
 
@@ -167,18 +163,18 @@ def read_abif_stream(istream):
         raise RuntimeError("Warning: not an ABIF file")
 
     t = ABIF()
-    t.version = struct.unpack('>h', bdata[4:6])[0]
+    t.version = unpack('>h', bdata[4:6])[0]
 
-    dir_entry_size = struct.calcsize(abif_direntry)
-    header = struct.unpack(abif_direntry, bdata[6: 6 + dir_entry_size])
+    dir_entry_size = calcsize(abif_direntry)
+    header = unpack(abif_direntry, bdata[6: 6 + dir_entry_size])
     dir_entry_num = header[4]
-    dir_entry_off = struct.unpack('>l', header[6])[0]
+    dir_entry_off = unpack('>l', header[6])[0]
 
     # read dir_entry and its associated data
 
     for i in range(0, dir_entry_num):
         offset = dir_entry_off + 28 * i
-        elems = struct.unpack(abif_direntry, bdata[offset: offset + 28])
+        elems = unpack(abif_direntry, bdata[offset: offset + 28])
         de = ABIF_DirEntry(*elems)
         if de.tag in t.dir_entries:
             t.dir_entries[de.tag][de.no] = de
@@ -188,27 +184,26 @@ def read_abif_stream(istream):
         # alt_type = abitags.get("%s%d" % (de.tag, de.no), de.etype)
         alt_type = abitags.get(de.tag + str(de.no).encode('ASCII'), de.etype)
         if alt_type != de.etype:
-            D("Warning: inconsistent element type for %s" % de.tag)
+            D(f"Warning: inconsistent element type for {de.tag}")
         if alt_type == 18:
             de.num -= 1
         etype_fmt = abitypes.get(alt_type)
         if not etype_fmt:
-            raise RuntimeError('unknown alt_type: %d with de.num: %d' %
-                               (alt_type, de.num))
+            raise RuntimeError(f'unknown alt_type: {alt_type} with de.num: {de.num}')
         if alt_type not in (10, 11, 1024):
             etype_fmt = etype_fmt % de.num
         elif alt_type == 1024:
             etype_fmt = etype_fmt % (de.esize * de.num)
         # D(etype_fmt, alt_type)
         if de.dsize <= 4:
-            de.data = struct.unpack(etype_fmt, de.drec[:de.dsize])
+            de.data = unpack(etype_fmt, de.drec[:de.dsize])
             if alt_type in [10, 11]:
                 continue
         else:
-            offset = struct.unpack('>l', de.drec)[0]
+            offset = unpack('>l', de.drec)[0]
             buf = bdata[offset: offset + de.dsize]
             # print(de.tag, de.no, de.etype, de.esize, etype_fmt, de.dsize)
-            de.data = struct.unpack(etype_fmt, buf)
+            de.data = unpack(etype_fmt, buf)
         if de.num == 1 or alt_type in (18, 19, 2):
             de.data = de.data[0]
 

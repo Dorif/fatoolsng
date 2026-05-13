@@ -3,10 +3,21 @@ from jax.numpy import (repeat, min, max, mean, median, std, linalg, abs,
                        maximum, linspace, hanning, r_, ones, sum, array,
                        concatenate, convolve)
 from numpy import mat
-import attr
+from dataclasses import dataclass
+from typing import Any
 from scipy.optimize import curve_fit
 from scipy.ndimage import white_tophat
-from scipy.signal import find_peaks_cwt, medfilt, savgol_filter
+from scipy.signal import cwt, ricker, medfilt, savgol_filter
+from scipy.signal import find_peaks as _scipy_find_peaks
+from numpy import asarray as _asarray, percentile as _percentile, absolute as _absolute
+
+
+def _cwt_find_peaks(vector, widths, min_snr=1):
+    mat = cwt(_asarray(vector, dtype=float), ricker, widths)
+    response = mat.max(axis=0)
+    noise = float(_percentile(_absolute(response), 10)) or 1.0
+    peaks, _ = _scipy_find_peaks(response, height=min_snr * noise)
+    return peaks
 
 _TOPHAT_FACTOR = 0.01  # 025   #05
 _MEDWINSIZE = 299
@@ -30,12 +41,12 @@ def correct_baseline(signal):
                         repeat([1], int(round(signal.size*_TOPHAT_FACTOR))))
 
 
-@attr.s
-class NormalizedTrace(object):
-    signal = attr.ib()
-    baseline = attr.ib()
-    mma = attr.ib()
-    mmb = attr.ib()
+@dataclass
+class NormalizedTrace:
+    signal: Any
+    baseline: Any
+    mma: Any
+    mmb: Any
 
 
 def func_mm(x, a, b):
@@ -56,7 +67,7 @@ def normalize_baseline(raw):
 
     # perform michaelis-menten equation for baseline assessment
     mm_line = medfilt(raw, [_MEDMMSIZE])
-    xx = np.linspace(0, len(raw))
+    xx = linspace(0, len(raw))
     try:
         popt, pcov = curve_fit(func_mm, xx, mm_line)
     except:
@@ -71,7 +82,7 @@ def search_peaks(signal, cwt_widths, min_snr):
     """ returns [ (peak, height, area) ], ... ] """
 
     # find all peaks by cwt-based algorithm
-    indices = find_peaks_cwt(signal, cwt_widths, min_snr=min_snr)
+    indices = _cwt_find_peaks(signal, cwt_widths, min_snr=min_snr)
 
     if not indices:
         return []
@@ -146,17 +157,17 @@ def half_area(y, threshold):
     return area, index, shared
 
 
-@attr.s
-class TraceChannel(object):
-    dye_name = attr.ib()
-    dye_wavelength = attr.ib()
-    raw_channel = attr.ib()
-    smooth_channel = attr.ib()
-    median = attr.ib()
-    mean = attr.ib()
-    sd = attr.ib()
-    max_height = attr.ib()
-    min_height = attr.ib()
+@dataclass
+class TraceChannel:
+    dye_name: Any
+    dye_wavelength: Any
+    raw_channel: Any
+    smooth_channel: Any
+    median: Any
+    mean: Any
+    sd: Any
+    max_height: Any
+    min_height: Any
 
 
 # return a list of ['dye name', dye_wavelength, numpy_array, numpy_smooth_baseline]
@@ -167,7 +178,7 @@ def separate_channels(trace):
     results = []
     for (idx, data_idx) in [(1, 1), (2, 2), (3, 3), (4, 4), (5, 105)]:
         try:
-            dye_name = trace.get_data(b('DyeN%d' % idx)).decode('UTF-8')
+            dye_name = trace.get_data(b(f'DyeN{idx}')).decode('UTF-8')
             # dye_wavelength = trace.get_data(b('DyeW%d' % idx))
 
             # below is to workaround on some strange dye names
@@ -179,11 +190,11 @@ def separate_channels(trace):
                 dye_name = 'LIZ'
 
             try:
-                dye_wavelength = trace.get_data(b('DyeW%d' % idx))
+                dye_wavelength = trace.get_data(b(f'DyeW{idx}'))
             except KeyError:
                 dye_wavelength = WAVELENGTH[dye_name]
 
-            raw_channel = array(trace.get_data(b('DATA%d' % data_idx)))
+            raw_channel = array(trace.get_data(b(f'DATA{data_idx}')))
             nt = normalize_baseline(raw_channel)
 
             results.append(TraceChannel(dye_name, dye_wavelength, raw_channel,

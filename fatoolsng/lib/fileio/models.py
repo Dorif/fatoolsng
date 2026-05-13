@@ -7,8 +7,9 @@ from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.fautil.mixin2 import (MarkerMixIn, PanelMixIn, ChannelMixIn,
                                          FSAMixIn, AlleleMixIn)
 from fatoolsng.lib import const
-import os
-import pickle
+from os import stat
+from os.path import basename, join, exists
+from pickle import load as pickle_load, dump as pickle_dump
 
 
 class Marker(MarkerMixIn):
@@ -111,19 +112,19 @@ class FSA(FSAMixIn):
     def from_file(cls, fsa_filename, panel, excluded_markers=None,
                   cache=True, cache_path=None):
         fsa = cls()
-        fsa.filename = os.path.basename(fsa_filename)
+        fsa.filename = basename(fsa_filename)
         fsa.set_panel(panel, excluded_markers)
         # with fileio, we need to prepare channels everytime or seek from cache
         if cache_path is None:
             cache = False
         else:
-            cache_file = os.path.join(cache_path, fsa.filename)
-        if cache and os.path.exists(cache_file):
-            if os.stat(fsa_filename).st_mtime < os.stat(cache_file).st_mtime:
-                cerr('I: uploading channel cache for %s' % fsa_filename)
+            cache_file = join(cache_path, fsa.filename)
+        if cache and exists(cache_file):
+            if stat(fsa_filename).st_mtime < stat(cache_file).st_mtime:
+                cerr(f'I: uploading channel cache for {fsa_filename}')
                 try:
                     with open(cache_file, 'rb') as cache_handle_read:
-                        fsa.channels = pickle.load(cache_handle_read)
+                        fsa.channels = pickle_load(cache_handle_read)
                     for c in fsa.channels:
                         c.fsa = fsa
                     # assume channels are already normalized
@@ -135,11 +136,11 @@ class FSA(FSAMixIn):
             fsa._fhdl = fsa_handle
             fsa.create_channels()
             fsa._fhdl = None
-        if cache and os.path.exists(cache_path):
+        if cache and exists(cache_path):
             for c in fsa.channels:
                 c.fsa = None
             with open(cache_file, 'wb') as cache_handle_write:
-                pickle.dump(fsa.channels, cache_handle_write)
+                pickle_dump(fsa.channels, cache_handle_write)
             for c in fsa.channels:
                 c.fsa = fsa
         return fsa

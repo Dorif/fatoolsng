@@ -5,9 +5,10 @@
 #from fatools.lib.sqlmodels import schema
 #from fatools.lib.utils import cout, cerr
 #from pandas import DataFrame
-import os, sys
+from os.path import isfile
+from sys import exit as sys_exit
 
-class SQLHandler_XXX(object):
+class SQLHandler_XXX:
 
 
     #Marker = schema.Marker
@@ -15,13 +16,13 @@ class SQLHandler_XXX(object):
     #Batch = schema.Batch
 
     def __init__(self, dbfile, initial=False):
-        print("Opening db: %s" % dbfile)
-        if not initial and not os.path.isfile(dbfile):
-            cerr('ERR - sqlite db file not found: %s' % dbfile)
-            sys.exit(1)
-        if initial and os.path.isfile(dbfile):
-            cerr('ERR - sqlite db file already exists: %s' % dbfile)
-            sys.exit(1)
+        print(f"Opening db: {dbfile}")
+        if not initial and not isfile(dbfile):
+            cerr(f'ERR - sqlite db file not found: {dbfile}')
+            sys_exit(1)
+        if initial and isfile(dbfile):
+            cerr(f'ERR - sqlite db file already exists: {dbfile}')
+            sys_exit(1)
         self.dbfile = dbfile
         self.engine, self.session = schema.engine_from_file(dbfile)
 
@@ -31,14 +32,14 @@ class SQLHandler_XXX(object):
             schema.Base.metadata.create_all(self.engine)
         from fatools.lib.sqlmodels.setup import setup
         setup( self.session )
-        cout('Database at %s has been initialized.' % self.dbfile)
+        cout(f'Database at {self.dbfile} has been initialized.')
 
 
     def get_batch(self, batch_code = None):
 
         if not batch_code:
             cerr('ERR - batch code must be supplied!')
-            sys.exit(1)
+            sys_exit(1)
 
         return schema.Batch.search(batch_code, self.session)
 
@@ -47,7 +48,7 @@ class SQLHandler_XXX(object):
 
         if not marker_code:
             cerr('ERR - marker code must be supplied')
-            sys.exit(1)
+            sys_exit(1)
 
         return schema.Marker.search(marker_code, self.session)
 

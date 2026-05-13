@@ -21,7 +21,7 @@ def load_yaml(yaml_text):
     return instances
 
 
-class Query(object):
+class Query:
 
     def __init__(self, query_params, dbh):
         self._params = query_params
@@ -56,8 +56,7 @@ class Query(object):
             sample_sets = self.get_sample_sets(sample_ids)
             self._analytical_sets = get_analytical_sets(self._dbh, sample_sets,
                                                         self._params['filter'])
-            cerr('[query]: initial total samples: %d' %
-                 self._analytical_sets.total_samples)
+            cerr(f'[query]: initial total samples: {self._analytical_sets.total_samples}')
         return self._analytical_sets
 
     def get_filtered_sample_sets(self, sample_ids=None):
@@ -65,8 +64,7 @@ class Query(object):
             if not sample_ids:
                 sample_ids = self.get_analytical_sets().get_filtered_sample_ids()
             self._filtered_sample_sets = self.get_sample_sets().filtered(sample_ids)
-            cerr('[query]: filtered total samples: %d' %
-                 self._filtered_sample_sets.total_samples)
+            cerr(f'[query]: filtered total samples: {self._filtered_sample_sets.total_samples}')
         return self._filtered_sample_sets
 
     def get_filtered_analytical_sets(self, sample_ids=None):
@@ -78,12 +76,11 @@ class Query(object):
             # create new analytical sets based on the filtered sample sets
             cerr('[query]: getting analytical sets with filtered sample sets')
             filtered_analytical_sets = get_analytical_sets(self._dbh, filtered_sample_sets, self._params['filter'])
-            cerr('[query]: filtered total samples: %d'
-                 % filtered_analytical_sets.total_samples)
+            cerr(f'[query]: filtered total samples: {filtered_analytical_sets.total_samples}')
 
             # get filtered marker ids
             filtered_marker_ids = filtered_analytical_sets.get_filtered_marker_ids()
-            cerr('[query]: filtered marker ids: %s' % str(filtered_marker_ids))
+            cerr(f'[query]: filtered marker ids: {str(filtered_marker_ids)}')
 
             # filter markers by retaining marker ids and removing others
             filtered_analytical_sets = get_analytical_sets(self._dbh, filtered_sample_sets, self._params['filter'], marker_ids=filtered_marker_ids)
@@ -104,7 +101,7 @@ class Query(object):
         """
 
         if mode not in ['allele', 'mlgt']:
-            raise RuntimeError('unknown get_sample_summary() mode: %s' % mode)
+            raise RuntimeError(f'unknown get_sample_summary() mode: {mode}')
 
         # count initial sample set
         initial_samples = {}

@@ -2,25 +2,26 @@ from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.fautil.dpalign import dp
 from numpy import poly1d
 from jax.numpy import zeros, polyfit, linspace, log10
-import attr
+from dataclasses import dataclass
+from typing import Any
 from math import sqrt, log, exp
 
 
-@attr.s
-class AlignResult(object):
-    score = attr.ib()
-    msg = attr.ib()
-    dpresult = attr.ib()
-    method = attr.ib()
-    initial_pairs = attr.ib(default=None)
+@dataclass
+class AlignResult:
+    score: Any
+    msg: Any
+    dpresult: Any
+    method: Any
+    initial_pairs: Any = None
 
 
-@attr.s
-class DPResult(object):
-    dpscore = attr.ib()
-    rss = attr.ib()
-    z = attr.ib()
-    sized_peaks = attr.ib()
+@dataclass
+class DPResult:
+    dpscore: Any
+    rss: Any
+    z: Any
+    sized_peaks: Any
 
     @property
     def ztranspose(self):
@@ -35,14 +36,14 @@ class DPResult(object):
         return []
 
 
-@attr.s
-class ZResult(object):
-    z = attr.ib()
-    rss = attr.ib()
-    f = attr.ib()
+@dataclass
+class ZResult:
+    z: Any
+    rss: Any
+    f: Any
 
 
-class PeakPairs(object):
+class PeakPairs:
 
     def __init__(self, peak_pairs):
         self.pairs = peak_pairs

@@ -7,20 +7,21 @@ from fatoolsng.lib.const import (peaktype, channelstatus, assaystatus, dyes,
 from fatoolsng.lib.fautil import algo
 from sortedcontainers import SortedListWithKey
 
-import io
+from io import BytesIO
+from abc import ABC, abstractmethod
 from numpy import poly1d
 from jax.numpy import zeros
 from copy import copy
 from functools import lru_cache
-import pprint
-import time
+from time import process_time
 
 
-class PanelMixIn(object):
+class PanelMixIn(ABC):
     """ contains Panel methods """
 
+    @abstractmethod
     def update(self, obj):
-        raise NotImplementedError('PROG/ERR - child class must provide this method')
+        ...
 
     def _update(self, obj):
 
@@ -46,9 +47,10 @@ class PanelMixIn(object):
         return [self.get_marker(m) for m in self.get_marker_codes()]
 
 
+    @abstractmethod
     def get_marker(self, marker_code):
         """ return marker instance with marker_code """
-        raise NotImplementedError('PROG/ERR - child class must provide this method')
+        ...
 
     def get_ladder_code(self):
         if self.data:
@@ -62,11 +64,12 @@ class PanelMixIn(object):
         return self._dyes[dye]
 
 
-class MarkerMixIn(object):
+class MarkerMixIn(ABC):
     """ contains Marker method """
 
+    @abstractmethod
     def update(self, obj):
-        raise NotImplementedError('PROG/ERR - child class must provide this method')
+        ...
 
     def _update(self, obj):
         """ supplanted by child's update() method, if necessary """
@@ -111,7 +114,7 @@ class MarkerMixIn(object):
 
     @property
     def label(self):
-        return self.species + '/' + self.code
+        return f'{self.species}/{self.code}'
 
     # @property
     # def sortedbins(self):
@@ -130,11 +133,12 @@ class MarkerMixIn(object):
             bin = self.new_bin(batch=batch)
         bin.initbins(start_range, end_range, self.repeats)
 
+    @abstractmethod
     def new_bin(self, batch):
-        raise NotImplementedError('PROG/ERR - need to implement this on child class')
+        ...
 
 
-class BinMixIn(object):
+class BinMixIn:
 
     def initbins(self, start_range, end_range, repeats):
         self.bins = []
@@ -148,7 +152,7 @@ class BinMixIn(object):
             tag = bins[idx][1]
             if tag in updated_bins:
                 bins[idx] = updated_bins[tag]
-                cerr('updating bin: %d' % tag)
+                cerr(f'updating bin: {tag}')
 
         # force db to update
         self.bins = bins
@@ -158,17 +162,16 @@ class BinMixIn(object):
         return SortedListWithKey(self.bins, key=lambda b: b[1])
 
 
-class BatchMixIn(object):
+class BatchMixIn(ABC):
     """ contains Batch methods """
 
+    @abstractmethod
     def get_panel(self, panel_code):
-        # shortcut to get single Panel instance, otherwise throws exception
-        raise NotImplementedError('PROG/ERR - child class must override this method')
+        ...
 
-
+    @abstractmethod
     def get_marker(self, marker_code, species_code=None):
-        # shortcut to get single Marker instance, otherwise throws exception
-        raise NotImplementedError('PROG/ERR - child class must override this method')
+        ...
 
     @property
     def sample_ids(self):
@@ -177,8 +180,9 @@ class BatchMixIn(object):
         """
         return list([x.id for s in self.samples])
 
+    @abstractmethod
     def update(self, obj):
-        raise NotImplementedError('PROG/ERR - child class must provide this method')
+        ...
 
     def _update(self, obj):
 
@@ -199,7 +203,7 @@ class BatchMixIn(object):
             sample.remove_assays()
 
 
-class SampleMixIn(object):
+class SampleMixIn(ABC):
     """ implement general Sample methods """
 
     def add_fsa_assay(self, trace, filename, panel_code, options=None, species=None,
@@ -234,18 +238,17 @@ class SampleMixIn(object):
             panel_markers = []
             for panel in panels:
                 panel_markers.extend(
-                    ('%s/%s' % (species, m) if '/' not in m else m).upper()
+                    (f'{species}/{m}' if '/' not in m else m).upper()
                     for m in panel.get_marker_codes()
                 )
             print(str(excluded_markers), str(panel_markers))
             unknown_markers = set(excluded_markers) - set(panel_markers)
             if unknown_markers:
-                raise RuntimeError('ERR - assay %s does not have exluded marker(s): %s'
-                                   % (filename, ','.join(unknown_markers)))
+                raise RuntimeError(f"ERR - assay {filename} does not have exluded marker(s): {','.join(unknown_markers)}")
 
         if dry_run:
             # we need to check whether trace is valid
-            trace_instance = traceio.read_abif_stream(io.BytesIO(trace))
+            trace_instance = traceio.read_abif_stream(BytesIO(trace))
             # things to be checked:
             # - dyes in the panel exist in DB
             # - duplicates of filename, panel_id, sample_id in the current DB
@@ -266,8 +269,9 @@ class SampleMixIn(object):
 
         return assay
 
+    @abstractmethod
     def new_fsa_assay(self, trace, filename, panel):
-        raise NotImplementedError('PROG/ERR - child class must override this method!')
+        ...
 
     def _update(self, obj):
 
@@ -287,23 +291,26 @@ class SampleMixIn(object):
 
             raise NotImplementedError('PROG/ERR - not implemented yet')
 
+    @abstractmethod
     def remove_fsas(self):
-        raise NotImplementedError
+        ...
 
 
-class ChannelMixIn(object):
+class ChannelMixIn(ABC):
     """ contains Channel methods """
 
+    @abstractmethod
     def reset(self):
         """ reset this channel, ie. set all peaks into peak-scanned """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def clear(self):
-        # clear this channel, ie. remove all peaks by removing all alleleset
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def preprocess(self, params):
-        raise NotImplementedError()
+        ...
 
     def scan(self, params, peakdb=None):
         """ scan using params """
@@ -324,18 +331,18 @@ class ChannelMixIn(object):
             params.ladder.expected_peak_number = len(sizes)
 
             alleles = algo.scan_peaks(self, params.ladder, peakdb)
-            cerr('ladder: %d; ' % len(alleles), nl=False)
+            cerr(f'ladder: {len(alleles)}; ', nl=False)
             alleleset.scanning_method = params.ladder.method
 
         else:
 
             alleles = algo.scan_peaks(self, params.nonladder, peakdb)
-            cerr('%s: %d; ' % (self.marker.label, len(alleles)), nl=False)
+            cerr(f'{self.marker.label}: {len(alleles)}; ', nl=False)
             alleleset.scanning_method = params.nonladder.method
 
+    @abstractmethod
     def preannotate(self, params):
-        # preannotate must be conducted within assay, eg. need all channels
-        raise NotImplementedError()
+        ...
 
     def alignladder(self, params):
 
@@ -354,11 +361,11 @@ class ChannelMixIn(object):
             p.size = -1
             p.bin = -1
 
-        start_time = time.process_time()
+        start_time = process_time()
         (qcscore, remarks, results, method) = algo.size_peaks(self, params,
                                                               ladder_sizes,
                                                               ladder_qc_func)
-        stop_time = time.process_time()
+        stop_time = process_time()
         (dpscore, rss, z, aligned_peaks) = results
         # qcscore, remarks = algo.score_ladder(rss, len(aligned_peak), len(ladder_sizes))
 
@@ -395,8 +402,9 @@ class ChannelMixIn(object):
 
         algo.call_peaks(self, params, func, min_rtime, max_rtime)
 
+    @abstractmethod
     def size(self, params):
-        raise NotImplementedError()
+        ...
 
     def bin(self, params):
 
@@ -432,12 +440,11 @@ class ChannelMixIn(object):
 
     def tag(self):
 
-        return '%s|%s|%s|%s|%s' % (self.assay.sample.batch.code,
-                                   self.assay.sample.code, self.assay.filename,
-                                   self.assay.runtime, self.dye.upper())
+        return f'{self.assay.sample.batch.code}|{self.assay.sample.code}|{self.assay.filename}|{self.assay.runtime}|{self.dye.upper()}'
 
+    @abstractmethod
     def get_latest_alleleset(self):
-        raise NotImplementedError('PROG/ERR - child class must override this method')
+        ...
 
     @property
     def alleles(self):
@@ -475,7 +482,7 @@ class ChannelMixIn(object):
             for j in range(len(x)):
                 D[i, j] = math.exp(((x[j]-y[i])/1000)**2)
 
-        pprint.pprint(D)
+        print(D)
         im = plt.imshow(D, interpolation='nearest', cmap='Reds')
         plt.gca().invert_yaxis()
         plt.xlabel("STD")
@@ -485,7 +492,7 @@ class ChannelMixIn(object):
         plt.show()
 
 
-class AssayMixIn(object):
+class AssayMixIn:
     """ contains Assay processing method """
 
     def reset(self):
@@ -514,9 +521,9 @@ class AssayMixIn(object):
     def preannotate(self, params):
         # annotate peaks for broad, rtime-based stutter & overlapping peaks
         channels = list(self.channels)
-        start_time = time.process_time()
+        start_time = process_time()
         algo.preannotate_channels(channels, params.nonladder)
-        stop_time = time.process_time()
+        stop_time = process_time()
         self.status = assaystatus.preannotated
         self.process_time = int((stop_time-start_time)*1000)  # in miliseconds
 
@@ -580,14 +587,14 @@ class AssayMixIn(object):
 
     def create_channels(self):
         """ create new channel based on current trace """
-        # t = traceio.read_abif_stream(io.BytesIO( self.raw_data))
+        # t = traceio.read_abif_stream(BytesIO( self.raw_data))
         t = self.get_trace()
 
         channels = traceutils.separate_channels(t)
         for tc in channels:
             # check n (dye name)
             if tc.dye_name not in dyes:
-                raise RuntimeError('ERR - dye %s is unknown!' % n)
+                raise RuntimeError(f'ERR - dye {n} is unknown!')
             c = self.new_channel(raw_data=tc.raw_channel,
                                  data=tc.smooth_channel,
                                  dye=tc.dye_name, wavelen=tc.dye_wavelength,
@@ -611,7 +618,7 @@ class AssayMixIn(object):
         marker_count = 0
         excluded = []
 
-        cerr('Assay: %s' % self.filename)
+        cerr(f'Assay: {self.filename}')
         cerr('Dyes: ', nl=False)
         for channel in self.channels:
             if channel.dye.upper() == ladder_dye.upper():
@@ -626,25 +633,24 @@ class AssayMixIn(object):
                 marker = panel.get_marker_by_dye(channel.dye.upper())
             except KeyError:
                 channel.status = channelstatus.unused
-                cerr('%s => Unused; ' % channel.dye, nl=False)
+                cerr(f'{channel.dye} => Unused; ', nl=False)
                 continue
 
             if (excluded_markers is not None and
                 marker.label.upper() in excluded_markers):
                 channel.status = channelstatus.unassigned
                 excluded.append(marker.label.upper())
-                cerr('%s => Unassigned; ' % channel.dye, nl=False)
+                cerr(f'{channel.dye} => Unassigned; ', nl=False)
                 continue
 
             channel.marker = marker
             channel.status = channelstatus.assigned
             marker_count += 1
-            cerr('%s => %s; ' % (channel.dye, marker.code), nl=False)
+            cerr(f'{channel.dye} => {marker.code}; ', nl=False)
 
         cerr('')
         if not has_ladder:
-            raise RuntimeError('ERR - sample %s assay %s does not have ladder!' %
-                               (self.sample.code, self.filename))
+            raise RuntimeError(f'ERR - sample {self.sample.code} assay {self.filename} does not have ladder!')
 
         if excluded:
             self.exclude = ','.join(excluded)
@@ -659,22 +665,23 @@ class AssayMixIn(object):
 
     def get_trace(self):
         if not hasattr(self, '_trace'):
-            self._trace = traceio.read_abif_stream(io.BytesIO(self.raw_data))
+            self._trace = traceio.read_abif_stream(BytesIO(self.raw_data))
         return self._trace
 
 
-class AlleleSetMixIn(object):
+class AlleleSetMixIn(ABC):
 
+    @abstractmethod
     def new_allele(self, rtime, height, area, brtime, ertime, wrtime, srtime,
                    beta):
-        raise NotImplementedError('PROG/ERR - child class must override this method!')
+        ...
 
     @property
     def batch(self):
         return self.sample.batch
 
 
-class AlleleMixIn(object):
+class AlleleMixIn:
 
     def _update(self, obj):
 
@@ -683,42 +690,42 @@ class AlleleMixIn(object):
             self.type_id = obj['type_id']
 
     def __repr__(self):
-        return '<Allele [%3d] %5d %6d>' % (self.size, self.rtime, self.height)
+        return f'<Allele [{self.size:3d}] {self.rtime:5d} {self.height:6d}>'
 
     def __str__(self):
-        return '<A [%3d %6.2f] %5d %6d | %5.1f  %+3.1f  %6.1f  %2.1f  %5d  %5.2f| %s>' % (
-                self.bin, self.size, self.rtime, self.height, self.beta,
-                self.srtime, self.theta, self.qscore,
-                round(self.theta * self.beta), self.deviation, self.type)
+        return (f'<A [{self.bin:3d} {self.size:6.2f}] {self.rtime:5d} {self.height:6d}'
+                f' | {self.beta:5.1f}  {self.srtime:+3.1f}  {self.theta:6.1f}'
+                f'  {self.qscore:2.1f}  {round(self.theta * self.beta):5d}'
+                f'  {self.deviation:5.2f}| {self.type}>')
 
 
-class NoteMixIn(object):
+class NoteMixIn:
     pass
 
 
-class BatchNoteMixIn(object):
+class BatchNoteMixIn:
     pass
 
 
-class SampleNoteMixIn(object):
+class SampleNoteMixIn:
     pass
 
 
-class MarkerNoteMixIn(object):
+class MarkerNoteMixIn:
     pass
 
 
-class PanelNoteMixIn(object):
+class PanelNoteMixIn:
     pass
 
 
-class AssayNoteMixIn(object):
+class AssayNoteMixIn:
     pass
 
 
-class ChannelNoteMixIn(object):
+class ChannelNoteMixIn:
     pass
 
 
-class AlleleSetNoteMixIn(object):
+class AlleleSetNoteMixIn:
     pass

@@ -2,7 +2,7 @@
 Collection of functions to do assay plotting using matplotlib.
 """
 from os.path import splitext
-import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure as mpl_figure, plot, legend, title, tight_layout, savefig, show, close
 from matplotlib.backends.backend_pdf import PdfPages
 from fatoolsng.lib import params
 from fatoolsng.lib.utils import cerr, cexit
@@ -37,7 +37,7 @@ def determine_figure_size(list_of_data):
     """
     # Every axes are given 2" in height
     height = 2 * len(list_of_data)
-    figure = plt.figure()
+    figure = mpl_figure()
     figure.set_size_inches(20, height)
 
     return figure
@@ -131,16 +131,16 @@ def save_or_show(plot_file):
     If plot_file is supplied, then the plot is saved to file.
     If plot_file is PdfPages object, save to PdfPages object.
     """
-    plt.tight_layout()
+    tight_layout()
     try:
         plot_file.savefig(dpi=150)
     except AttributeError:
         if plot_file is not None:
-            plt.savefig(plot_file, dpi=150)
+            savefig(plot_file, dpi=150)
         else:
-            plt.show()
+            show()
     finally:
-        plt.close()
+        close()
 
 
 def do_plot(fsa, plot_file=None):
@@ -160,10 +160,10 @@ def do_plot(fsa, plot_file=None):
 
     for channel in channels:
         color = colorize_wavelength(channel.wavelen)
-        plt.plot(channel.data, color=color, label=channel.dye)
+        plot(channel.data, color=color, label=channel.dye)
 
-    plt.legend(framealpha=0.5)
-    plt.title(fsa.filename)
+    legend(framealpha=0.5)
+    title(fsa.filename)
     save_or_show(plot_file)
 
 
@@ -276,10 +276,7 @@ def do_ladder_plot(fsas, plot_file):
 
         prepare_second_x_axis(ladder_axes, size_rtime_rfu)
 
-        title = '{filename} | Score: {score:.2f} | RSS: {rss:.2f}'.format(
-            filename=fsa.filename,
-            score=fsa.score,
-            rss=fsa.rss)
+        title = f'{fsa.filename} | Score: {fsa.score:.2f} | RSS: {fsa.rss:.2f}'
         ladder_axes.set_title(title, y=1.3)
 
     save_or_show(plot_file)
@@ -320,9 +317,9 @@ def check_and_prepare_pdf(plot_file):
             plot_file = PdfPages(plot_file)
         else:
             try:
-                plt.savefig(plot_file)
+                savefig(plot_file)
             except ValueError:
-                cerr('E: Format {} is not supported!'.format(plot_file_ext))
+                cerr(f'E: Format {plot_file_ext} is not supported!')
                 cexit('Exiting...')
 
     return plot_file

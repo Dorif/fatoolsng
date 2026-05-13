@@ -1,4 +1,4 @@
-import argparse
+from argparse import ArgumentParser
 # get the helpers
 # from fatoolsng.scripts.dbmgr import get_assay_list
 
@@ -8,7 +8,7 @@ def init_argparser(parser=None):
     if parser:
         p = parser
     else:
-        p = argparse.ArgumentParser('binsutil')
+        p = ArgumentParser('binsutil')
 
     p.add_argument('--sqldb', default=False, help='SQLite3 database filename')
 

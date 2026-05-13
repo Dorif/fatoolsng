@@ -1,28 +1,28 @@
-import sys
-import base64
-import os
+from sys import stdout, stderr, exit as sys_exit
+from base64 import b64encode
+from os import urandom
 from math import ceil
 
 
 def cout(s, nl=True, flush=False):
-    sys.stdout.write(s)
+    stdout.write(s)
     if nl:
-        sys.stdout.write('\n')
+        stdout.write('\n')
     if flush:
-        sys.stdout.flush()
+        stdout.flush()
 
 
 def cerr(s, nl=True, flush=False):
-    sys.stderr.write(s)
+    stderr.write(s)
     if nl:
-        sys.stderr.write('\n')
+        stderr.write('\n')
     if flush:
-        sys.stderr.flush()
+        stderr.flush()
 
 
 def cexit(s, code=1):
     cerr(s)
-    sys.exit(code)
+    sys_exit(code)
 
 
 _VERBOSITY_ = 0
@@ -69,7 +69,7 @@ def get_dbhandler(args, initial=False):
         raise NotImplementedError()
 
     cerr('ERR: Please specify database system using --sqldb or --fsdb options!')
-    sys.exit(1)
+    sys_exit(1)
 
 
 def tokenize(options, converter=None):
@@ -85,7 +85,7 @@ def tokenize(options, converter=None):
     return opt_dict
 
 
-random_string = lambda n: base64.b64encode(os.urandom(int(ceil(0.75*n))),
+random_string = lambda n: b64encode(urandom(int(ceil(0.75*n))),
                                            b'-_')[:n].decode('UTF-8')
 
 

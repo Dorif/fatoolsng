@@ -1,85 +1,86 @@
+from enum import Enum
 
 
-class peaktype(object):
-    scanned = 'scanned'
-    broad = 'broad'
-    noise = 'noise'
-    overlap = 'overlap'
+class peaktype(str, Enum):
+    scanned    = 'scanned'
+    broad      = 'broad'
+    noise      = 'noise'
+    overlap    = 'overlap'
     unassigned = 'unassigned'
-    ladder = 'ladder'
-    called = 'called'
-    stutter = 'stutter'
-    artifact = 'artifact'
-    bin = 'bin'
-    ignored = 'ignored'
+    ladder     = 'ladder'
+    called     = 'called'
+    stutter    = 'stutter'
+    artifact   = 'artifact'
+    bin        = 'bin'
+    ignored    = 'ignored'
 
 
-class channelstatus(object):
-    unassigned = 'unassigned'   # dye is used in panel, but not in this channel
-    assigned = 'assigned'       # channel is assigned to a marker
-    unused = 'unused'           # dye is unused in panel
-    noisy = 'noisy'
-    empty = 'empty'
-    reseted = 'reseted'         # channel is reseted (created empty)
-    scanned = 'scanned'
+class channelstatus(str, Enum):
+    unassigned   = 'unassigned'   # dye is used in panel, but not in this channel
+    assigned     = 'assigned'     # channel is assigned to a marker
+    unused       = 'unused'       # dye is unused in panel
+    noisy        = 'noisy'
+    empty        = 'empty'
+    reseted      = 'reseted'      # channel is reseted (created empty)
+    scanned      = 'scanned'
     preannotated = 'preannotated'
-    aligned = 'aligned'  # ladder peaks has been aligned to standard size
-    called = 'called'
-    binned = 'binned'
-    annotated = 'annotated'
-    ladder = 'ladder'           # channel is used for ladder
+    aligned      = 'aligned'      # ladder peaks has been aligned to standard size
+    called       = 'called'
+    binned       = 'binned'
+    annotated    = 'annotated'
+    ladder       = 'ladder'       # channel is used for ladder
 
 
-class assaystatus(object):
-    uploaded = 'uploaded'
-    unassigned = 'unassigned'
-    assigned = 'assigned'
-    scanned = 'scanned'
+class assaystatus(str, Enum):
+    uploaded     = 'uploaded'
+    unassigned   = 'unassigned'
+    assigned     = 'assigned'
+    scanned      = 'scanned'
     preannotated = 'preannotated'
-    normalized = 'normalized'
-    aligned = 'aligned'
-    called = 'called'
-    binned = 'binned'
-    annotated = 'annotated'
+    normalized   = 'normalized'
+    aligned      = 'aligned'
+    called       = 'called'
+    binned       = 'binned'
+    annotated    = 'annotated'
 
 
-class alignmethod(object):
-    notapplicable = 'notapplicable'
-    fast_hq = 'fast|highqual'
-    fast_mq = 'fast|medqual'
-    fast_hqr = 'fast|highqual-relax'
-    fast_mqr = 'fast|medqual-relax'
+class alignmethod(str, Enum):
+    notapplicable   = 'notapplicable'
+    fast_hq         = 'fast|highqual'
+    fast_mq         = 'fast|medqual'
+    fast_hqr        = 'fast|highqual-relax'
+    fast_mqr        = 'fast|medqual-relax'
     greedy_filtered = 'greedy|filtered'
-    greedy_shifted = 'greedy|shifted'
-    greedy_scored = 'greedy|scored'
-    minim_strict = 'minim|strict'
-    minim_relax = 'minim|relax'
-    pm_strict = 'pm|strict'
-    pm_relax = 'pm|relax'
-    hcm_strict = 'hcm|strict'
-    hcm_relax = 'hcm|relax'
-    gm_strict = 'gm|strict'
-    gm_relax = 'gm|relax'
-    de_relax = 'de|relax'
+    greedy_shifted  = 'greedy|shifted'
+    greedy_scored   = 'greedy|scored'
+    minim_strict    = 'minim|strict'
+    minim_relax     = 'minim|relax'
+    pm_strict       = 'pm|strict'
+    pm_relax        = 'pm|relax'
+    hcm_strict      = 'hcm|strict'
+    hcm_relax       = 'hcm|relax'
+    gm_strict       = 'gm|strict'
+    gm_relax        = 'gm|relax'
+    de_relax        = 'de|relax'
 
 
-class scanningmethod(object):
+class scanningmethod(str, Enum):
     notapplicable = 'notapplicable'
-    cwt = 'cwt'     # CWT-based from scipy
-    pd = 'pd'       # peak detection from peakutils
+    cwt           = 'cwt'   # CWT-based from scipy
+    pd            = 'pd'    # peak detection from peakutils
 
 
-class allelemethod(object):
-    uncalled = 'uncalled'
-    leastsquare = 'leastsquare'
-    cubicspline = 'cubicspline'
+class allelemethod(str, Enum):
+    uncalled      = 'uncalled'
+    leastsquare   = 'leastsquare'
+    cubicspline   = 'cubicspline'
     localsouthern = 'localsouthern'
 
 
-class binningmethod(object):
+class binningmethod(str, Enum):
     notavailable = 'notavailable'
-    auto = 'auto'
-    semiauto = 'semiauto'
+    auto         = 'auto'
+    semiauto     = 'semiauto'
 
 
 dyes = ['6-FAM', 'NED', 'VIC', 'PET', 'SID', 'LIZ']

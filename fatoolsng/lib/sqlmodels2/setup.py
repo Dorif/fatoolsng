@@ -10,16 +10,16 @@ def setup(dbh):
     for d in default_markers.values():
         marker = dbh.new_marker()
         marker.update(d)
-        marker.remark = 'Test __slots__ for %s!' % marker.code
+        marker.remark = f'Test __slots__ for {marker.code}!'
         marker.anything = 'abc'
-        cerr("I: marker '%s' created." % marker.code)
+        cerr(f"I: marker '{marker.code}' created.")
         session.add(marker)
 
     # create default panels
     for d in default_panels.values():
         panel = dbh.new_panel()
         panel.update(d)
-        cerr("I: panel '%s' created." % panel.code)
+        cerr(f"I: panel '{panel.code}' created.")
         session.add(panel)
 
     # create default batch (for bin holder)

@@ -1,11 +1,11 @@
 
-import sys
-import csv
+from sys import stdout
+from csv import writer as csv_writer
 from itertools import zip_longest
 from pandas import pivot_table
 
 
-class autostream(object):
+class autostream:
 
     def __init__(self, outstream):
         self.outstream = outstream
@@ -80,9 +80,7 @@ def export_alleledf(analytical_sets, dbh, outstream):
              ratio, rank) = t[1:]
             marker = dbh.get_marker_by_id(marker_id)
             sample = dbh.get_sample_by_id(sample_id)
-            outstream.write('%s\t%s\t%s\t%d\t%f\t%d\t%f\t%d\n' %
-                            (analytical_set.label, marker.code, sample.code,
-                             value, size, height, ratio, rank))
+            outstream.write(f'{analytical_set.label}\t{marker.code}\t{sample.code}\t{value:d}\t{size:f}\t{height:d}\t{ratio:f}\t{rank:d}\n')
 
 
 def export_moidf(analytical_sets, dbh, outstream):
@@ -105,8 +103,7 @@ def export_moidf(analytical_sets, dbh, outstream):
                 sample_code = dbh.get_sample_by_id(sample_id).code
             else:
                 sample_code = str(sample_id)
-            outstream.write('%s\t%s\t%d\t%d\n' %
-                            (label, sample_code, moi_number, mloci_number))
+            outstream.write(f'{label}\t{sample_code}\t{moi_number:d}\t{mloci_number:d}\n')
 
 
 def export_arlequin(analytical_sets, dbh, outstream, recode=False):
@@ -123,22 +120,22 @@ def export_arlequin(analytical_sets, dbh, outstream, recode=False):
         if len(analytical_set.allele_df.mlgt) == 0:
             continue
 
-        _ += ['    SampleName="%s"' % analytical_set.label,
-              '    SampleSize=%d' % len(analytical_set.allele_df.mlgt),
+        _ += [f'    SampleName="{analytical_set.label}"',
+              f'    SampleSize={len(analytical_set.allele_df.mlgt)}',
               '    SampleData={',]
 
         nbsamples += 1
 
         for e in analytical_set.allele_df.mlgt.itertuples():
             if recode:
-                _.append('    %d 1 ' % e[0] + ' '.join('%02d%03d' % (idx, x) for x in e[1:]))
+                _.append(f'    {e[0]} 1 ' + ' '.join(f'{idx:02d}{x:03d}' for x in e[1:]))
             else:
-                _.append('    %d 1 ' % e[0] + ' '.join('%03d' % x for x in e[1:]))
+                _.append(f'    {e[0]} 1 ' + ' '.join(f'{x:03d}' for x in e[1:]))
 
         _.append('    }')
 
     _ = ['[Profile]', '  Title="MsAF exported data"',
-         '  NbSamples=%d' % nbsamples, '  DataType=MICROSAT',
+         f'  NbSamples={nbsamples}', '  DataType=MICROSAT',
          '  GenotypicData=0', '  GameticPhase=0',
          '  MissingData="?"', '  LocusSeparator=WHITESPACE', '',] + _
 
@@ -167,8 +164,7 @@ def export_demetics(analytical_sets, dbh, outstream):
              ratio, rank) = t[1:]
             marker = dbh.get_marker_by_id(marker_id)
             # sample = dbh.get_sample_by_id(sample_id)
-            outstream.write('%s\t%s\t%d\t%s\n' %
-                            (sample_id, label_id, value, marker.code))
+            outstream.write(f'{sample_id}\t{label_id}\t{value:d}\t{marker.code}\n')
 
 
 def export_flat(analytical_set, dbh, outstream):
@@ -185,9 +181,9 @@ def export_flat(analytical_set, dbh, outstream):
 
 def write_csv(output, outstream, delimiter='\t'):
 
-    writer = csv.writer(outstream, delimiter=delimiter)
+    writer = csv_writer(outstream, delimiter=delimiter)
     for (label, rows, aux_rows, assay_rows) in output:
-        writer.writerow(('Label: %s' % label,))
+        writer.writerow((f'Label: {label}',))
         writer.writerows(rows)
 
 
@@ -209,7 +205,7 @@ def write_r(output, outstream, delimiter='\t'):
         if header != rows[0]:
             raise RuntimeError('Headers between tabulated data do not match')
 
-    writer = csv.writer(outstream, delimiter=delimiter)
+    writer = csv_writer(outstream, delimiter=delimiter)
     writer.writerow(('Group',) + header)
     for (label, rows, aux_rows, assay_rows) in output:
         for row in rows[1:]:
@@ -221,11 +217,10 @@ def export(analytical_sets, dbh, outfile, format='major_tab'):
     export_func = export_format[format]
 
     if outfile == '-':
-        outstream = sys.stdout
+        export_func(analytical_sets, dbh, stdout)
     else:
-        outstream = open(outfile, 'wt')
-
-    export_func(analytical_sets, dbh, outstream)
+        with open(outfile, 'wt') as outstream:
+            export_func(analytical_sets, dbh, outstream)
 
 
 def tabulate_data(allele_df, dbh):

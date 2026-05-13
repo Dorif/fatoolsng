@@ -1,4 +1,9 @@
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
+from abc import ABCMeta
+
+
+class _DeclarativeABCMeta(DeclarativeMeta, ABCMeta):
+    pass
 from sqlalchemy.orm import scoped_session, sessionmaker  # , mapper
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, create_engine, func
@@ -21,13 +26,13 @@ from fatoolsng.lib.fautil.mixin import (PanelMixIn, AssayMixIn, ChannelMixIn,
                                         SampleNoteMixIn, AssayNoteMixIn,
                                         ChannelNoteMixIn, AlleleSetNoteMixIn,
                                         PanelNoteMixIn, MarkerNoteMixIn)
-import os
-import io
+from os.path import abspath
+from io import BytesIO
 from ruamel.yaml import YAML as yaml
 from sys import exit
 from jax.numpy import save, load
-import copy
-import json
+from copy import deepcopy
+from json import dumps as json_dumps, loads as json_loads
 
 # __all__ = ['get_base', 'get_dbsession', 'set_datalogger']
 # this is necessary for SQLite to use FOREIGN KEY support (as well as ON DELETE CASCADE)
@@ -40,7 +45,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 
 
-Base = declarative_base()
+Base = declarative_base(metaclass=_DeclarativeABCMeta)
 
 
 def _generic_query(cls, session):
@@ -85,15 +90,15 @@ class JSONCol(types.TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is null:
             value = None
-        return json.dumps(value)
+        return json_dumps(value)
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        return json.loads(value)
+        return json_loads(value)
 
     def copy_value(self, value):
-        return copy.deepcopy(value)
+        return deepcopy(value)
 
 # create YAML column
 #
@@ -116,7 +121,7 @@ class YAMLCol(types.TypeDecorator):
         return yaml.load(value)
 
     def copy_value(self, value):
-        return copy.deepcopy(value)
+        return deepcopy(value)
 
 
 class NPArray(types.TypeDecorator):
@@ -126,19 +131,19 @@ class NPArray(types.TypeDecorator):
         if value is None:
             return None
         # buf = value.tostring()
-        buf = io.BytesIO()
+        buf = BytesIO()
         save(buf, value)
         return buf.getvalue()
 
     def process_result_value(self, value, dialect):
         if value is None:
             return None
-        buf = io.BytesIO(value)
+        buf = BytesIO(value)
         return load(buf)
         # return numpy.fromstring(value)
 
     def copy_value(self, value):
-        return copy.deepcopy(value)
+        return deepcopy(value)
 
 
 class Note(Base, NoteMixIn):
@@ -277,7 +282,7 @@ class Panel(Base, PanelMixIn):
         for m_code in self.data['markers']:
             m = Marker.search(m_code, session)
             if m is None:
-                cerr("ERR: can't find marker: %s" % m_code)
+                cerr(f"ERR: can't find marker: {m_code}")
                 exit(1)
 
     def sync(self, session):
@@ -387,7 +392,7 @@ class Marker(Base, MarkerMixIn):
 
             batch = batch.bin_batch
             if batch is None:
-                raise RuntimeError('Could not found bins for marker %s' % self.label)
+                raise RuntimeError(f'Could not found bins for marker {self.label}')
 
 
 class MarkerNote(Base, MarkerNoteMixIn):
@@ -720,7 +725,7 @@ def engine_from_file(dbfilename, bind=True):
 
     # make absolute path
     if dbfilename != ':memory:':
-        abspath = os.path.abspath(dbfilename)
+        abspath = abspath(dbfilename)
         engine = create_engine('sqlite:///' + abspath)
     else:
         # use memory-based sqlite database

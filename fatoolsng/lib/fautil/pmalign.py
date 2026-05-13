@@ -1,6 +1,6 @@
 # pair minimization algorithm
 from numpy import poly1d
-import itertools
+from itertools import product
 from jax.scipy.optimize import minimize
 from fatoolsng.lib.utils import cout, cerr, cverr, is_verbosity
 from fatoolsng.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
@@ -43,8 +43,7 @@ def align_pm(peaks, ladder, anchor_pairs=None):
     # last dp
     dp_result = align_dp(f.rtimes, f.sizes, f.similarity, z, rss)
     if is_verbosity(1):
-        import pprint
-        pprint.pprint(dp_result.sized_peaks)
+        print(dp_result.sized_peaks)
     if is_verbosity(4):
         plot(f.rtimes, f.sizes, dp_result.z,
              [(x[1], x[0]) for x in dp_result.sized_peaks])
@@ -73,7 +72,7 @@ def align_pm(peaks, ladder, anchor_pairs=None):
         while abs(rss - last_rss) > 1e-3:
 
             niter += 1
-            cverr(5, 'Iter: %d' % niter)
+            cverr(5, f'Iter: {niter}')
 
             cverr(5, z)
             score = f(z)
@@ -401,4 +400,4 @@ def prepare_rtimes(rtimes):
     # prepare combination of begin and end rtimes
 
     mid_size = round(len(rtimes)/2)
-    return list(itertools.product(rtimes[:mid_size], rtimes[mid_size-2:]))
+    return list(product(rtimes[:mid_size], rtimes[mid_size-2:]))

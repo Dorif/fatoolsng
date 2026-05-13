@@ -1,5 +1,5 @@
-import sys
-import os
+from sys import exit as sys_exit
+from os.path import isfile
 from fatoolsng.lib.utils import cout, cerr
 from fatoolsng.lib.sqlmodels.handler_interface import base_sqlhandler
 from fatoolsng.lib.sqlmodels import schema
@@ -17,13 +17,13 @@ class SQLHandler(base_sqlhandler):
     Allele = schema.Allele
 
     def __init__(self, dbfile, initial=False):
-        cerr("Opening db: %s" % dbfile)
-        if not initial and not os.path.isfile(dbfile):
-            cerr('ERR - sqlite db file not found: %s' % dbfile)
-            sys.exit(1)
-        if initial and os.path.isfile(dbfile):
-            cerr('ERR - sqlite db file already exists: %s' % dbfile)
-            sys.exit(1)
+        cerr(f"Opening db: {dbfile}")
+        if not initial and not isfile(dbfile):
+            cerr(f'ERR - sqlite db file not found: {dbfile}')
+            sys_exit(1)
+        if initial and isfile(dbfile):
+            cerr(f'ERR - sqlite db file already exists: {dbfile}')
+            sys_exit(1)
         self.dbfile = dbfile
         self.engine, self.session = schema.engine_from_file(dbfile)
 
@@ -32,4 +32,4 @@ class SQLHandler(base_sqlhandler):
             schema.Base.metadata.create_all(self.engine)
         from fatoolsng.lib.sqlmodels.setup import setup
         setup(self.session)
-        cout('Database at %s has been initialized.' % self.dbfile)
+        cout(f'Database at {self.dbfile} has been initialized.')

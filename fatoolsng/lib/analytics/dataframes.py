@@ -2,7 +2,7 @@
 from pandas import pivot_table  # , DataFrame
 
 
-class AlleleDataFrame(object):
+class AlleleDataFrame:
 
     def __init__(self, dbh, sample_ids, marker_ids, params):
         self.sample_ids = sample_ids

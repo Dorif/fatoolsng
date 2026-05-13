@@ -1,9 +1,9 @@
 from numpy import poly1d
 from jax.numpy import median, percentile, mean, sum, polyfit, sort
 from math import log, log2
-from scipy.signal import find_peaks_cwt
 # from scipy.optimize import curve_fit, leastsq
 from scipy.interpolate import UnivariateSpline
+from fatoolsng.lib.fautil.traceutils import _cwt_find_peaks
 from fatoolsng.lib.const import peaktype, binningmethod, allelemethod
 # from fatoolsng.lib.fautil.dpalign import estimate_z, align_peaks, plot_z
 from fatoolsng.lib.utils import cerr, cverr  # , cout
@@ -11,7 +11,7 @@ import fatoolsng.lib.fautil.peakalign as pa
 
 from sortedcontainers import SortedListWithKey
 
-import pickle  # , pprint
+from pickle import loads as pickle_loads  # , pprint
 # from matplotlib import pylab as plt
 # from bisect import bisect_left
 
@@ -24,7 +24,7 @@ def find_raw_peaks(raw_data, params):
 
     if params.method == 'cwt':
         # from jax.scipy.signal import find_peaks_cwt
-        indices = find_peaks_cwt(raw_data, widths, min_snr=params.min_snr)
+        indices = _cwt_find_peaks(raw_data, widths, min_snr=params.min_snr)
         # cerr('find_peaks_cwt() found %d peaks' % len(indices))
         # pprint.pprint(indices)
 
@@ -52,11 +52,11 @@ def find_raw_peaks(raw_data, params):
         from peakutils import indexes
         indices = indexes(raw_data, 1e-5, 10)
         # pprint.pprint(indices)
-        cverr(3, 'indice size: %d' % len(indices))
-        cverr(3, 'indices => %s' % repr(indices))
+        cverr(3, f'indice size: {len(indices)}')
+        cverr(3, f'indices => {repr(indices)}')
 
     else:
-        raise RuntimeError('unknown peak finding method: %s' % params.method)
+        raise RuntimeError(f'unknown peak finding method: {params.method}')
 
     if indices is None or len(indices) == 0:
         return []
@@ -156,8 +156,8 @@ def find_peaks(raw_data,  params, raw_peaks=None):
         peaks.append((peak, height, area, brtime, ertime, srtime, beta, theta))
 
     peaks.sort()
-    cverr(3, 'peaks stage 1 size: %d' % len(peaks))
-    cverr(3, 'peaks stage 1: %s' % repr(peaks))
+    cverr(3, f'peaks stage 1 size: {len(peaks)}')
+    cverr(3, f'peaks stage 1: {repr(peaks)}')
 
     non_artifact_peaks = []
 
@@ -179,14 +179,14 @@ def find_peaks(raw_data,  params, raw_peaks=None):
 
         non_artifact_peaks.append(peak)
 
-    cverr(3, 'max_peak_number: %d' % params.max_peak_number)
+    cverr(3, f'max_peak_number: {params.max_peak_number}')
 
     sorted_peaks = sorted(non_artifact_peaks, key=lambda x: (x[1],
                                                              x[6] * x[7]),
                           reverse=True)[:params.max_peak_number]
     peaks = sorted(sorted_peaks)
-    cverr(3, 'peaks stage 3 size: %d' % len(peaks))
-    cverr(3, 'peaks stage 3: %s' % repr(peaks))
+    cverr(3, f'peaks stage 3 size: {len(peaks)}')
+    cverr(3, f'peaks stage 3: {repr(peaks)}')
 
     return peaks
 
@@ -206,7 +206,7 @@ def scan_peaks(channel, params, peakdb):
     """
 
     if peakdb:
-        raw_peaks = pickle.loads(peakdb.Get(channel.tag().encode()))
+        raw_peaks = pickle_loads(peakdb.Get(channel.tag().encode()))
     else:
         raw_peaks = None
 
@@ -214,7 +214,7 @@ def scan_peaks(channel, params, peakdb):
     # peaks = ( rtime, height, area, brtime, ertime )
     # cerr('DEBUG - initial peaks: %d' % len(initial_peaks))
 
-    cverr(3, 'initial peaks: %d' % len(initial_peaks))
+    cverr(3, f'initial peaks: {len(initial_peaks)}')
 
     # perform futher cleaning for ladder channels
     if params.expected_peak_number:
@@ -235,11 +235,11 @@ def scan_peaks(channel, params, peakdb):
             else:
                 score_threshold = avg_low_score * 0.25
             height_threshold = 10
-            cverr(3, 'using score threshold: %f' % score_threshold)
-            cverr(3, 'using height_threshold: %d' % height_threshold)
+            cverr(3, f'using score threshold: {score_threshold:f}')
+            cverr(3, f'using height_threshold: {height_threshold}')
         peaks = [q for q in peak_qualities
                  if q[0] > score_threshold and q[1][1] > height_threshold]
-        cverr(3, 'after peak quality filtering: %d' % len(peaks))
+        cverr(3, f'after peak quality filtering: {len(peaks)}')
         if len(peaks) > 1.5 * params.expected_peak_number:
             # try to remove peaks further
             saved_peaks = peaks
@@ -249,7 +249,7 @@ def scan_peaks(channel, params, peakdb):
                 saved_peaks = [q for q in saved_peaks
                                if q[0] > height_threshold]
             peaks = saved_peaks
-            cverr(3, 'after reducing peaks number by height: %d' % len(peaks))
+            cverr(3, f'after reducing peaks number by height: {len(peaks)}')
         peaks = sorted([q[1] for q in peaks])
 
     else:
@@ -423,17 +423,11 @@ def preannotate_channels(channels, params):
                     if not o_state:
                         continue
 
-                    print('peak: %d | %s | %s <> %f | %f | %f' % (p.rtime,
-                                                                  p.channel.dye,
-                                                                  p.type,
-                                                                  rel_height,
-                                                                  o_ratio,
-                                                                  o_sym))
+                    print(f'peak: {p.rtime} | {p.channel.dye} | {p.type} <> {rel_height:f} | {o_ratio:f} | {o_sym:f}')
                     if rel_height < 0.15:
                         if p.type != peaktype.noise:
                             p.type = peaktype.overlap
-                            print('peak: %d | %s -> overlap' % (p.rtime,
-                                                                p.channel.dye))
+                            print(f'peak: {p.rtime} | {p.channel.dye} -> overlap')
                         p.qscore -= 0.10
                         continue
 
@@ -443,8 +437,7 @@ def preannotate_channels(channels, params):
                         (o_ratio < 0.75 and -0.5 < o_sym < 0.5)):
                         if p.type != peaktype.noise:
                             p.type = peaktype.overlap
-                            print('peak: %d | %s -> overlap' % (p.rtime,
-                                                                p.channel.dye))
+                            print(f'peak: {p.rtime} | {p.channel.dye} -> overlap')
                         p.qscore -= 0.10
                         continue
 
@@ -483,7 +476,7 @@ def size_peaks(channel, params, ladders, qcfunc=None):
 
     if score_0 > 0.99:
         return (score_0, msg_0, result_0, method_0)
-    cerr('fast_align(): %4.2f' % score_0)
+    cerr(f'fast_align(): {score_0:4.2f}')
     scores.append((score_0, msg_0, result_0, method_0))
 
     # perform shift_align with both clean, high quality peaks and good peaks
@@ -493,7 +486,7 @@ def size_peaks(channel, params, ladders, qcfunc=None):
 
     if score_0 > 0.99:
         return (score_0, msg_0, result_0, method_0)
-    cerr('shift_align(): %4.2f' % score_0)
+    cerr(f'shift_align(): {score_0:4.2f}')
     scores.append((score_0, msg_0, result_0, method_0))
 
     # perform greedy alignment
@@ -691,7 +684,7 @@ def is_overlap(peak_1, peak_2):
 def is_definitive_overlap(peak_1, data_1, peak_2, data_2):
     """ is peak_1 is overlapped of peak_2 """
     for x in range(peak_1.brtime + 3, peak_1.ertime - 3):
-        print('x: %d 1[x]: %d 2[x]: %d' % (x, data_1[x], data_2[x]))
+        print(f'x: {x} 1[x]: {data_1[x]} 2[x]: {data_2[x]}')
         if data_1[x] > data_2[x]:
             return False
     return True
@@ -750,7 +743,7 @@ def generate_scoring_function(strict_params, relax_params):
                 dp_rss_part = 1
             else:
                 dp_rss_part = 1e-2 ** (1e-3 * delta_rss)
-                msg.append('RSS > %d' % (relax_params['max_rss']))
+                msg.append(f"RSS > {relax_params['max_rss']}")
 
 # score based on how many peaks we might miss
 # compared to minimum number of peaks
@@ -760,7 +753,7 @@ def generate_scoring_function(strict_params, relax_params):
             else:
                 dp_peaks_part = max(0,
                                     -2*delta_peaks*relax_params['min_sizes']-1)
-                msg.append('Missing peaks = %d' % delta_peaks)
+                msg.append(f'Missing peaks = {delta_peaks}')
 
             # total overall score
             score = 0.3*dp_score_part + dp_rss_part/2 + dp_peaks_part/5

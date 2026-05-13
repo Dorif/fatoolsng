@@ -11,16 +11,17 @@ from fatoolsng.lib.fautil.alignutils import (estimate_z, AlignResult, align_dp,
 from scipy.cluster.hierarchy import linkage, fcluster  # , dendrogram
 from collections import defaultdict
 from functools import reduce
-import operator
+from operator import add as operator_add
 # from numpy import poly1d
-import attr
+from dataclasses import dataclass
+from typing import Any
 
 
-@attr.s
-class T(object):
-    p = attr.ib()       # original peaks
-    z = attr.ib()       # z matrix, containing tree
-    c = attr.ib()       # list of peaks contained in each node/branch
+@dataclass
+class T:
+    p: Any       # original peaks
+    z: Any       # z matrix, containing tree
+    c: Any       # list of peaks contained in each node/branch
 
     def cluster(self, idx):
         if idx is None:
@@ -107,16 +108,16 @@ def align_hc(peaks, ladder):
     print(peak_clusters)
 
     if len(peak_clusters[-1]) == 1:
-        if len(reduce(operator.add, peak_clusters)) > len(ladder_sizes):
+        if len(reduce(operator_add, peak_clusters)) > len(ladder_sizes):
             del peak_clusters[-1]
             # del peaks[-1]
     if len(peak_clusters[0]) == 1:
-        if len(reduce(operator.add, peak_clusters)) > len(ladder_sizes):
+        if len(reduce(operator_add, peak_clusters)) > len(ladder_sizes):
             del peak_clusters[0]
             # del peaks[0]
 
     if len(peak_clusters) < ladder['k']:
-        P = generate_tree([(n, 0) for n in reduce(operator.add,
+        P = generate_tree([(n, 0) for n in reduce(operator_add,
                                                   peak_clusters)])
         peak_clusters = generate_cluster(P, ladder['k'])
 
@@ -145,9 +146,9 @@ def align_hc(peaks, ladder):
         if is_good_pairing(pairs):
             initial_pairs.extend(pairs)
         else:
-            cverr(3, '>> this pairings is not included:\n%s' % pairs)
+            cverr(3, f'>> this pairings is not included:\n{pairs}')
 
-    cverr(3, '>> initial pairs:\n%s' % initial_pairs)
+    cverr(3, f'>> initial pairs:\n{initial_pairs}')
 
     if not initial_pairs:
         return AlignResult(-1, 'E: no initial pairs defined!', None, None)

@@ -8,7 +8,7 @@ colour_list = ['#1f78b4', '#33a02c', '#e31a1c', '#ff7f00', '#6a3d9a',
                '#cab2d6', '#ffff99']
 
 
-class Selector(object):
+class Selector:
 
     def __init__(self, samples=[]):
         self.samples = samples
@@ -121,7 +121,7 @@ class Selector(object):
         return q
 
 
-class Filter(object):
+class Filter:
 
     def __init__(self):
         self.markers = []

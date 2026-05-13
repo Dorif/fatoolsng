@@ -1,23 +1,23 @@
 from fatoolsng.lib.fautil import algo2 as algo
 from fatoolsng.lib.utils import cout, cerr  # , cexit
 from fatoolsng.lib import const
+from abc import ABC, abstractmethod
 
-# import attr
-import time
+from time import process_time
 
 # FA
 
 
-class AlleleMixIn(object):
+class AlleleMixIn:
 
     __slots__ = ['rtime', 'rfu', 'area', 'brtime', 'ertime', 'wrtime',
                  'srtime', 'beta', 'theta', 'omega', 'size', 'bin', 'dev',
                  'type', 'method', 'marker', 'qscore', 'qcall',]
 
     def __repr__(self):
-        return "<A: %3d | %4d | %5d | %2d | %+3.1f | %4.1f | %5.1f | %6d | %4.2f >" % (
-                    self.size, self.rtime, self.rfu, self.wrtime, self.srtime,
-                    self.beta, self.theta, self.omega, self.dev)
+        return (f"<A: {self.size:3d} | {self.rtime:4d} | {self.rfu:5d} | {self.wrtime:2d}"
+                f" | {self.srtime:+3.1f} | {self.beta:4.1f} | {self.theta:5.1f}"
+                f" | {self.omega:6d} | {self.dev:4.2f} >")
 
     @property
     def height(self):
@@ -27,11 +27,11 @@ class AlleleMixIn(object):
         return self.rtime < other.rtime
 
 
-class AlleleSetMixIn(object):
+class AlleleSetMixIn:
     pass
 
 
-class ChannelMixIn(object):
+class ChannelMixIn(ABC):
     """
     attrs: alleles, fsa, status
     """
@@ -39,9 +39,10 @@ class ChannelMixIn(object):
     __slots__ = ['data', 'dye', 'wavelen', 'alleles', 'fsa', 'status',
                  'marker', 'mma', 'mmb', 'p80', 'offset',]
 
+    @abstractmethod
     def add_allele(self, allele):
         """ add this allele to channel """
-        raise NotImplementedError()
+        ...
 
     def is_ladder(self):
         return self.marker.code == 'ladder'
@@ -88,7 +89,7 @@ class ChannelMixIn(object):
             ladder['qcfunc'] = algo.generate_scoring_function(ladder['strict'],
                                                               ladder['relax'])
 
-        start_time = time.process_time()
+        start_time = process_time()
         result = algo.align_peaks(self, parameters, ladder, anchor_pairs)
         dpresult = result.dpresult
         fsa = self.fsa
@@ -96,15 +97,13 @@ class ChannelMixIn(object):
         fsa.rss = dpresult.rss
         fsa.nladder = len(dpresult.sized_peaks)
         fsa.score = result.score
-        fsa.duration = time.process_time() - start_time
+        fsa.duration = process_time() - start_time
         fsa.status = const.assaystatus.aligned
         fsa.ztranspose = dpresult.ztranspose
 
         # import pprint; pprint.pprint(dpresult.sized_peaks)
         # print(fsa.z)
-        cout('O: Score %3.2f | %5.2f | %d/%d | %s | %5.1f | %s' %
-             (fsa.score, fsa.rss, fsa.nladder, len(ladder['sizes']),
-              result.method, fsa.duration, fsa.filename))
+        cout(f"O: Score {fsa.score:3.2f} | {fsa.rss:5.2f} | {fsa.nladder}/{len(ladder['sizes'])} | {result.method} | {fsa.duration:5.1f} | {fsa.filename}")
 
     def call(self, parameters, func, min_rtime, max_rtime):
 
@@ -114,10 +113,10 @@ class ChannelMixIn(object):
         algo.call_peaks(self, parameters, func, min_rtime, max_rtime)
 
     def __repr__(self):
-        return "<Channel: %s> " % self.dye
+        return f"<Channel: {self.dye}> "
 
 
-class FSAMixIn(object):
+class FSAMixIn(ABC):
     """
     attrs: channels
     """
@@ -125,13 +124,15 @@ class FSAMixIn(object):
     __slots__ = ['panel', 'channels', 'excluded_markers', 'filename', 'rss',
                  'z', 'score', 'nladder', 'duration', 'status', 'ztranspose',]
 
+    @abstractmethod
     def get_data_stream(self):
         """ return stream of data """
-        raise NotImplementedError()
+        ...
 
+    @abstractmethod
     def add_channel(self, trace_channel):
         """ add this channel to fsa """
-        raise NotImplementedError()
+        ...
 
     def get_trace(self):
         if not hasattr(self, '_trace'):
@@ -153,7 +154,7 @@ class FSAMixIn(object):
                 self.excluded_markers.append(marker_code.lower())
 
     def create_channels(self):
-        cerr('I: Generating channels for %s' % self.filename)
+        cerr(f'I: Generating channels for {self.filename}')
         trace = self.get_trace()
         trace_channels = algo.separate_channels(trace)
         for tc in trace_channels:
@@ -209,7 +210,7 @@ class FSAMixIn(object):
         raise RuntimeError('E: ladder channel not found')
 
 
-class MarkerMixIn(object):
+class MarkerMixIn:
     """
     attrs: id, code, species, min_size, max_size, repeats, z_params
     """
@@ -252,7 +253,7 @@ class MarkerMixIn(object):
 
     @property
     def label(self):
-        return '%s/%s' % (self.species, self.code)
+        return f'{self.species}/{self.code}'
 
     @classmethod
     def from_dict(cls, d):
@@ -261,15 +262,16 @@ class MarkerMixIn(object):
         return marker
 
 
-class PanelMixIn(object):
+class PanelMixIn(ABC):
     """
     attrs: id, code, data, dyes, Marker
     """
 
     __slots__ = ['id', 'code', 'data', 'dyes', '_dyes',]
 
+    @abstractmethod
     def set_ladder_dye(self, ladder):
-        raise NotImplementedError()
+        ...
 
     def update(self, obj):
 
@@ -303,49 +305,49 @@ class PanelMixIn(object):
         return panel
 
 
-class BinMixIn(object):
+class BinMixIn:
     pass
 
 # Sample
 
 
-class SampleMixIn(object):
+class SampleMixIn:
     pass
 
 
-class BatchMixIn(object):
+class BatchMixIn:
     pass
 
 
 # Auxiliary mixin, probably should be in separate file when fully implemented
 
-class NoteMixIn(object):
+class NoteMixIn:
     pass
 
 
-class BatchNoteMixIn(object):
+class BatchNoteMixIn:
     pass
 
 
-class SampleNoteMixIn(object):
+class SampleNoteMixIn:
     pass
 
 
-class MarkerNoteMixIn(object):
+class MarkerNoteMixIn:
     pass
 
 
-class PanelNoteMixIn(object):
+class PanelNoteMixIn:
     pass
 
 
-class FSANoteMixIn(object):
+class FSANoteMixIn:
     pass
 
 
-class ChannelNoteMixIn(object):
+class ChannelNoteMixIn:
     pass
 
 
-class AlleleSetNoteMixIn(object):
+class AlleleSetNoteMixIn:
     pass

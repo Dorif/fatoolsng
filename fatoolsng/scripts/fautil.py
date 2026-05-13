@@ -1,11 +1,11 @@
-import argparse
-import os
+from argparse import ArgumentParser
+from os.path import abspath
 from fatoolsng.lib.utils import cout, cerr, cexit
 
 
 def init_argparser():
 
-    p = argparse.ArgumentParser('fautil')
+    p = ArgumentParser('fautil')
 
     p.add_argument('--info', default=False, action='store_true',
                    help='get information on FA assay')
@@ -56,7 +56,7 @@ def get_traces(args, dbh):
         infile = args.file
         if infile is False:
             cexit('E - Please provide a filename or Sqlite database path')
-        abspath = os.path.abspath(args.file)
+        abspath = abspath(args.file)
         if abspath in cache_traces:
             traces.append((abspath, cache_traces[abspath]))
         else:
@@ -75,8 +75,8 @@ def do_info(args, dbh):
     traces = get_traces(args, dbh)
 
     for abspath, trace in traces:
-        cout('I - trace: %s' % abspath)
-        cout('I - runtime: %s' % trace.get_run_start_time())
+        cout(f'I - trace: {abspath}')
+        cout(f'I - runtime: {trace.get_run_start_time()}')
 
 
 def do_view(args, dbh):
@@ -103,7 +103,7 @@ def do_analyze(args):
     dummy_panel = Panel('-', {'ladder': args.sizestandard,
                               'markers': {}, })
     with open(args.file, 'rb') as in_stream:
-        cerr('Reading FSA file: %s' % args.file)
+        cerr(f'Reading FSA file: {args.file}')
         t = read_abif_stream(in_stream)
     # create a new Assay and add trace
     assay = Assay()

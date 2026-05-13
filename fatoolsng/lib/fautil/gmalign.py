@@ -10,14 +10,14 @@ from fatoolsng.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
                                              plot)
 
 
-class ZFunc(object):
+class ZFunc:
 
     def __init__(self, peaks, sizes, anchor_pairs):
         """
         """
 
 
-class ZFunc(object):
+class ZFunc:
 
     def __init__(self, peaks, sizes, anchor_pairs, estimate=False):
         """
@@ -149,9 +149,7 @@ def align_gm(peaks, ladder, anchor_pairs, z=None):
         zresult = estimate_z(rtimes, bpsizes, niter if niter < 3 else 3)
         rss = zresult.rss
         z = zresult.z
-        cerr('I: GM iter: %2d  - pairs: %2d  - Cur RSS: %6.2f' % (niter,
-                                                                  len(pairs),
-                                                                  rss))
+        cerr(f'I: GM iter: {niter:2d}  - pairs: {len(pairs):2d}  - Cur RSS: {rss:6.2f}')
         niter += 1
         results.append(zresult)
 
@@ -223,9 +221,7 @@ def align_de(peaks, ladder, initial_pair=[]):
         zres = estimate_z(rtimes, bpsizes, niter if niter < 3 else 3)
 
         niter += 1
-        cerr('I: DE iter: %2d  - pairs: %2d  - Cur RSS: %6.2f' % (niter,
-                                                                  len(pairs),
-                                                                  zres.rss))
+        cerr(f'I: DE iter: {niter:2d}  - pairs: {len(pairs):2d}  - Cur RSS: {zres.rss:6.2f}')
         results.append(zres)
 
         if zres.rss < len(bpsizes) * 1.0:
@@ -267,9 +263,7 @@ def estimate_de(peaks, sizes):
         zres = estimate_z(rtimes, bpsizes, 1)
 
         niter += 1
-        cerr('I: DE iter: %2d  - pairs: %2d  - Cur RSS: %6.2f' % (niter,
-                                                                  len(pairs),
-                                                                  zres.rss))
+        cerr(f'I: DE iter: {niter:2d}  - pairs: {len(pairs):2d}  - Cur RSS: {zres.rss:6.2f}')
         results.append((zres, pairs))
 
         if zres.rss < len(bpsizes) * 1.0:

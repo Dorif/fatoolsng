@@ -8,7 +8,7 @@
 #
 
 from jax.numpy import random, abs
-import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure, close
 import mdp
 
 
@@ -47,7 +47,7 @@ def plot_pca(pca_result, distance_matrix, pc1, pc2, filename=None):
     if not filename:
         raise RuntimeError('plot_pca() needs filename argument')
 
-    fig = plt.figure()
+    fig = figure()
     ax = fig.add_subplot(111)
 
     pca_matrix = pca_result[0]
@@ -59,16 +59,16 @@ def plot_pca(pca_result, distance_matrix, pc1, pc2, filename=None):
                    label=hs.label, alpha=0.75, marker='+', s=30)
 
     if pca_var is not None:
-        ax.set_xlabel('PC%d (%.3f%%)' % (pc1 + 1, pca_var[pc1]))
-        ax.set_ylabel('PC%d (%.3f%%)' % (pc2 + 1, pca_var[pc2]))
+        ax.set_xlabel(f'PC{pc1 + 1} ({pca_var[pc1]:.3f}%)')
+        ax.set_ylabel(f'PC{pc2 + 1} ({pca_var[pc2]:.3f}%)')
     else:
-        ax.set_xlabel('PC%d' % (pc1 + 1))
-        ax.set_ylabel('PC%d' % (pc2 + 1))
+        ax.set_xlabel(f'PC{pc1 + 1}')
+        ax.set_ylabel(f'PC{pc2 + 1}')
     leg = ax.legend(loc='upper left', scatterpoints=1, fontsize='x-small',
                     fancybox=True, bbox_to_anchor=(1, 1))
     # leg.get_frame().set_alpha(0.5)
     fig.savefig(filename, bbox_extra_artists=(leg,), bbox_inches='tight')
-    plt.close()
+    close()
     return filename
 
 
@@ -86,9 +86,9 @@ def mca(distance_matrix, dim=2):
     r_df = pandas2ri.py2ri(distance_matrix.H)
     robjects.globalenv['haplo_data'] = r_df
     marker_len = len(distance_matrix.H.columns)
-    arguments = ','.join('as.factor(haplo_data[,%d])' % x
+    arguments = ','.join(f'as.factor(haplo_data[,{x}])'
                          for x in range(1, marker_len + 1))
-    robjects.r('haplo_df <- data.frame(%s)' % arguments)
+    robjects.r(f'haplo_df <- data.frame({arguments})')
     robjects.r('library(FactoMineR)')
     mca_res = robjects.r('MCA(haplo_df, graph=FALSE)')
 
@@ -121,10 +121,10 @@ def format_data(pca_res, dm):
     """ return row of [sample_id, label, pc1, pc2, ...] """
 
     dim = len(pca_res[0][0])
-    d = [('SAMPLE', 'LABEL') + tuple('PC%d' % (x+1) for x in range(dim))]
+    d = [('SAMPLE', 'LABEL') + tuple(f'PC{x+1}' for x in range(dim))]
 
     for i in range(len(dm.I)):
-        d.append((str(dm.I[i]), dm.L[i]) + tuple('%5.4f' % x for x in
+        d.append((str(dm.I[i]), dm.L[i]) + tuple(f'{x:5.4f}' for x in
                                                  pca_res[0][i]))
 
     return d
