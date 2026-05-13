@@ -4,8 +4,7 @@ from contextlib import nullcontext
 from ruamel.yaml import YAML as yaml
 from csv import DictReader, reader as csv_reader
 from transaction import manager as transaction_manager
-from os import makedirs
-from os.path import splitext
+from pathlib import Path
 from fatoolsng.lib.utils import cout, cerr, cexit, get_dbhandler, tokenize
 
 
@@ -323,7 +322,7 @@ def do_initsample(args, dbh):
     b = dbh.Batch.search(args.batch, dbh.session)
     cout(f'INFO - using batch code: {b.code}')
 
-    name, ext = splitext(args.infile)
+    name, ext = Path(args.infile).stem, Path(args.infile).suffix
 
     if ext in ['.csv', '.tab', '.tsv']:
 
@@ -596,8 +595,8 @@ def do_exportfsa(args, dbh):
 
     outdir = None
     if args.outdir:
-        makedirs(args.outdir)
-        outdir = args.outdir + '/'
+        outdir = Path(args.outdir)
+        outdir.mkdir(parents=True, exist_ok=True)
 
     with (open(args.outfile, 'w') if args.outfile
           else nullcontext(stdout)) as outfile:
@@ -605,7 +604,7 @@ def do_exportfsa(args, dbh):
 
         for (assay, sample_code) in assay_list:
             if outdir:
-                with open(outdir + assay.filename, 'wb') as f:
+                with open(outdir / assay.filename, 'wb') as f:
                     f.write(assay.raw_data)
             exclude = f'exclude={assay.exclude}' if assay.exclude else ''
             outfile.write(f'{assay.filename}\t{sample_code}\t{assay.panel.code}\t{exclude}\n')

@@ -26,7 +26,7 @@ from fatoolsng.lib.fautil.mixin import (PanelMixIn, FSAMixIn, ChannelMixIn,
                                         SampleNoteMixIn, FSANoteMixIn,
                                         ChannelNoteMixIn, AlleleSetNoteMixIn,
                                         PanelNoteMixIn, MarkerNoteMixIn)
-from os.path import abspath
+from pathlib import Path
 from io import BytesIO
 from ruamel.yaml import YAML as yaml
 from copy import deepcopy
@@ -718,8 +718,7 @@ def engine_from_file(dbfilename, bind=True):
 
     # make absolute path
     if dbfilename != ':memory:':
-        abspath = abspath(dbfilename)
-        engine = create_engine('sqlite:///' + abspath)
+        engine = create_engine(f'sqlite:///{Path(dbfilename).resolve()}')
     else:
         # use memory-based sqlite database
         engine = create_engine('sqlite://')

@@ -1,5 +1,5 @@
 from sys import exit as sys_exit
-from os.path import isfile
+from pathlib import Path
 from fatoolsng.lib.utils import cerr
 from fatoolsng.lib.sqlmodels.handler_interface import base_sqlhandler
 from fatoolsng.lib.sqlmodels import schema
@@ -18,10 +18,10 @@ class SQLHandler(base_sqlhandler):
 
     def __init__(self, dbfile, initial=False):
         cerr(f"Opening db: {dbfile}")
-        if not initial and not isfile(dbfile):
+        if not initial and not Path(dbfile).is_file():
             cerr(f'ERR - sqlite db file not found: {dbfile}')
             sys_exit(1)
-        if initial and isfile(dbfile):
+        if initial and Path(dbfile).is_file():
             cerr(f'ERR - sqlite db file already exists: {dbfile}')
             sys_exit(1)
         self.dbfile = dbfile

@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from os.path import abspath
+from pathlib import Path
 from fatoolsng.lib.utils import cout, cerr, cexit
 
 
@@ -56,15 +56,15 @@ def get_traces(args, dbh):
         infile = args.file
         if infile is False:
             cexit('E - Please provide a filename or Sqlite database path')
-        abspath = abspath(args.file)
-        if abspath in cache_traces:
-            traces.append((abspath, cache_traces[abspath]))
+        fsa_path = Path(args.file).resolve()
+        if fsa_path in cache_traces:
+            traces.append((fsa_path, cache_traces[fsa_path]))
         else:
             from fatoolsng.lib.fautil.traceio import read_abif_stream
-            with open(abspath, 'rb') as instream:
+            with fsa_path.open('rb') as instream:
                 t = read_abif_stream(instream)
-                cache_traces[abspath] = t
-                traces.append((abspath, t))
+                cache_traces[fsa_path] = t
+                traces.append((fsa_path, t))
     else:
         pass
     return traces
@@ -74,8 +74,8 @@ def do_info(args, dbh):
 
     traces = get_traces(args, dbh)
 
-    for abspath, trace in traces:
-        cout(f'I - trace: {abspath}')
+    for fsa_path, trace in traces:
+        cout(f'I - trace: {fsa_path}')
         cout(f'I - runtime: {trace.get_run_start_time()}')
 
 
@@ -83,7 +83,7 @@ def do_view(args, dbh):
     traces = get_traces(args, dbh)
 
     from fatoolsng.lib.gui.viewer import viewer
-    for abspath, trace in traces:
+    for fsa_path, trace in traces:
         viewer(trace)
 
 

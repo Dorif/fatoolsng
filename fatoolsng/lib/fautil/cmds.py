@@ -5,8 +5,7 @@ from sys import exit
 from argparse import ArgumentParser
 from ruamel.yaml import YAML as yaml
 from csv import DictReader
-from os.path import join, expanduser, exists
-from os import makedirs
+from pathlib import Path
 from io import StringIO
 from transaction import manager as transaction_manager
 
@@ -250,13 +249,10 @@ def open_fsa(args):
     # prepare caching
     cache_path = None
     if not args.no_cache:
-        cache_path = join(expanduser('~'), '.fatools_caches',
-                          'channels')
+        cache_path = Path.home() / '.fatools_caches' / 'channels'
         if args.cache_path is not None:
-            cache_path = join(args.cache_path, '.fatools_caches',
-                              'channels')
-        if not exists(cache_path):
-            makedirs(cache_path)
+            cache_path = Path(args.cache_path) / '.fatools_caches' / 'channels'
+        cache_path.mkdir(parents=True, exist_ok=True)
 
     if args.file:
         for fsa_filename in args.file.split(','):

@@ -4,7 +4,7 @@ from subprocess import call
 from collections import defaultdict
 # import jax.numpy as np
 from datetime import date
-from os.path import exists
+from pathlib import Path
 
 
 def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
@@ -36,7 +36,7 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
 
     d = defaultdict(dict)
 
-    if exists(ci_file):
+    if Path(ci_file).exists():
         with open(ci_file) as infile:
             in_data = False
             for r in infile:
@@ -52,7 +52,7 @@ def run_demetics(analytical_sets, dbh, tmp_dir, mode='d.jost'):
 
         return dict(M=d, data_file=data_file, msg='')
 
-    if exists(mean_file):
+    if Path(mean_file).exists():
         # just use the mean file
         with open(mean_file) as infile:
             next(infile)    # skip the header

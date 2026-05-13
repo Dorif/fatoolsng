@@ -1,7 +1,7 @@
 """
 Collection of functions to do assay plotting using matplotlib.
 """
-from os.path import splitext
+from pathlib import Path
 from matplotlib.pyplot import figure as mpl_figure, plot, legend, title, tight_layout, savefig, show, close
 from matplotlib.backends.backend_pdf import PdfPages
 from fatoolsng.lib import params
@@ -312,7 +312,7 @@ def check_and_prepare_pdf(plot_file):
     plot_file: PdfPages object with plot_file name if format is '.pdf'
     """
     if plot_file is not None:
-        plot_file_ext = splitext(plot_file)[-1]
+        plot_file_ext = Path(plot_file).suffix
         if plot_file_ext == '.pdf':
             plot_file = PdfPages(plot_file)
         else:

@@ -7,8 +7,7 @@ from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.fautil.mixin import (MarkerMixIn, PanelMixIn, ChannelMixIn,
                                         FSAMixIn, AlleleMixIn)
 from fatoolsng.lib import const
-from os import stat
-from os.path import basename, join, exists
+from pathlib import Path
 from pickle import load as pickle_load, dump as pickle_dump
 
 
@@ -112,15 +111,15 @@ class FSA(FSAMixIn):
     def from_file(cls, fsa_filename, panel, excluded_markers=None,
                   cache=True, cache_path=None):
         fsa = cls()
-        fsa.filename = basename(fsa_filename)
+        fsa.filename = Path(fsa_filename).name
         fsa.set_panel(panel, excluded_markers)
         # with fileio, we need to prepare channels everytime or seek from cache
         if cache_path is None:
             cache = False
         else:
-            cache_file = join(cache_path, fsa.filename)
-        if cache and exists(cache_file):
-            if stat(fsa_filename).st_mtime < stat(cache_file).st_mtime:
+            cache_file = Path(cache_path) / fsa.filename
+        if cache and cache_file.exists():
+            if Path(fsa_filename).stat().st_mtime < cache_file.stat().st_mtime:
                 cerr(f'I: uploading channel cache for {fsa_filename}')
                 try:
                     with open(cache_file, 'rb') as cache_handle_read:
@@ -136,7 +135,7 @@ class FSA(FSAMixIn):
             fsa._fhdl = fsa_handle
             fsa.create_channels()
             fsa._fhdl = None
-        if cache and exists(cache_path):
+        if cache and Path(cache_path).exists():
             for c in fsa.channels:
                 c.fsa = None
             with open(cache_file, 'wb') as cache_handle_write:
