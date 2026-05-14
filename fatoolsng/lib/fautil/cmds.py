@@ -341,5 +341,5 @@ def get_fsa_list(args, dbh):
                 continue
             fsa_list.append((assay, sample.code))
 
-    cerr(f'I: number of assays to be processed: {len(assay_list)}')
+    cerr(f'I: number of assays to be processed: {len(fsa_list)}')
     return fsa_list

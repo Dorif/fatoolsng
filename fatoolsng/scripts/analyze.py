@@ -170,30 +170,6 @@ def do_export(args, dbh):
     cout('Done.')
 
 
-def do_corralleles(args, dbh):
-
-    from fatoolsng.lib.analysis.correlation import correlate_alleles
-
-    query = get_query(args, dbh)
-    analytical_sets = query.get_filtered_analytical_sets()
-    for marker_code in analytical_sets.marker_ids:
-
-        report = correlate_alleles(analytical_sets[0], analytical_sets[1],
-                                   marker=marker_code)
-        cout(make_correlate_report(report))
-
-
-def get_sample_sets(args, dbh):
-    pass
-
-
-def get_analytical_sets(args, dbh):
-
-    query = load_yaml(open(args.yamlquery).read())
-    sample_sets = query['selector'].get_sample_sets(dbh)
-    print(sample_sets)
-
-
 def get_query(args, dbh):
 
     query_params = load_yaml(open(args.yamlquery).read())
