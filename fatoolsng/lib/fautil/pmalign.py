@@ -35,11 +35,8 @@ def align_pm(peaks, ladder, anchor_pairs=None):
 
     anchor_pairs.sort()
     pairs, z, rss, f = align_upper_pm(peaks, ladder, anchor_pairs, initial_z)
-    # print(pairs)
     pairs, z, rss, f = align_lower_pm(peaks, ladder, pairs, initial_z)
 
-    # print(rss)
-    # plot(f.rtimes, f.sizes, z, pairs)
     # last dp
     dp_result = align_dp(f.rtimes, f.sizes, f.similarity, z, rss)
     if is_verbosity(1):
@@ -151,7 +148,6 @@ def minimize_score(f, z, order):
     while niter < 50:
 
         score = f(z)
-        # print(score)
 
         if last_score and abs(last_score - score) < 1e-6:
             break
@@ -199,12 +195,10 @@ def estimate_pm(peaks, bpsizes):
             plot(f.rtimes, f.sizes, zres.z, [])
 
     scores.sort(key=lambda x: x[0])
-    # import pprint; pprint.pprint(scores[:5])
     zresult = scores[0][1]
 
     dp_result = align_dp(f.rtimes, f.sizes, f.similarity, zresult.z,
                          zresult.rss)
-    # import pprint; pprint.pprint(dp_result.sized_peaks)
     if is_verbosity(5):
         plot(f.rtimes, f.sizes, dp_result.z,
              [(x[1], x[0]) for x in dp_result.sized_peaks])

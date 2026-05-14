@@ -114,12 +114,9 @@ def align_gm(peaks, ladder, anchor_pairs, z=None):
 
     # try pair f
     # result = pair_f(poly1d(z), f.rtimes, sizes)
-    # import pprint; pprint.pprint(result)
 
     rss = -1
     prev_rss = 0
-    # print('>>> Initial rss: ', rss)
-    # plot(f.rtimes, f.sizes, z, result)
 
     # minimizer_kwargs = {'method': 'BFGS'}
     # bounds = [ (-1e-10,1e-10), (-1e-5,1e-5), (0,1e-3), (-1e2,1e2) ]
@@ -145,7 +142,6 @@ def align_gm(peaks, ladder, anchor_pairs, z=None):
         niter += 1
         results.append(zresult)
 
-        # plot(f.rtimes, f.sizes, z, pairs)
 
         if rss < len(pairs) * 1.0:
             break

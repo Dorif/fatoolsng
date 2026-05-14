@@ -1,3 +1,24 @@
+"""Fragment analysis algorithms: peak scanning, ladder alignment, peak calling.
+
+Typical low-level pipeline (operating on individual objects)::
+
+    ladder_channel = fsa.ladder_channel()
+    alleles = scan_peaks(ladder_channel, params.ladder)
+    result  = align_ladder(alleles, ladder, anchor_pairs=None)
+
+    for channel in fsa.non_ladder_channels():
+        scan_peaks(channel, params.nonladder)
+        call_peaks(channel, params.nonladder, sizing_func, min_rtime, max_rtime)
+        bin_peaks(channel, params.nonladder, marker)
+        postannotate_peaks(channel, params.nonladder)
+
+High-level pipeline (via FSAMixIn methods)::
+
+    fsa.align()                    # aligns ladder channel
+    fsa.call(params)               # calls peaks on all non-ladder channels
+    fsa.bin(params, markers=None)  # bins alleles to marker size ranges
+"""
+
 from __future__ import annotations
 
 from jax.numpy import polyfit, linspace, repeat
@@ -183,7 +204,6 @@ def find_raw_peaks(data, params, offset, expected_peak_number=0):
     params.min_rfu
     params.max_peak_number
     """
-#    print("expected:", expected_peak_number)
 #   cut and pad data to overcome peaks at the end of array
     obs_data = append(data[offset:], [0, 0, 0])
     if False:  # expected_peak_number:
@@ -214,8 +234,6 @@ def find_raw_peaks(data, params, offset, expected_peak_number=0):
              if data[i] >= params.min_rfu and params.min_rtime < i]
 #    peaks = sorted(peaks, key = lambda x: x.rfu )[:params.max_peak_number * 2]
 
-#    import pprint; pprint.pprint(peaks)
-#    print('======')
 
     if expected_peak_number:
         peaks.sort(key=lambda x: x.rfu, reverse=True)
@@ -238,7 +256,6 @@ def find_peaks(data, params, offset=0, expected_peak_number=0):
     # measure peaks parameters
     measure_peaks(peaks, data, offset)
 
-#    import pprint; pprint.pprint(peaks)
 
 #    filter artefact peaks if expected peak number is bigger
     if expected_peak_number > 10:
@@ -473,7 +490,6 @@ def filter_for_artifact(peaks, params, expected_peak_number=0):
         #    continue
         filtered_peaks.append(p)
 
-    # import pprint; pprint.pprint(filtered_peaks)
 
     # filter for distance between peaks and their rfu ratio
     peaks = sorted(filtered_peaks, key=lambda x: x.rtime)
@@ -499,8 +515,6 @@ def filter_for_artifact(peaks, params, expected_peak_number=0):
 
         non_artifact_peaks.append(p)
 
-    # import pprint; pprint.pprint(non_artifact_peaks)
-    # print(len(non_artifact_peaks))
 
     peaks = non_artifact_peaks
 
@@ -682,26 +696,3 @@ def local_southern(ladder_alleles: list) -> Callable:
 
     return _f
 
-# this is a new algorithm and steps to perform peak analysis
-#
-# fsa = import_fsa()
-# ladder_channel = fsa.ladder_channel()
-# alleles = scan_peaks(ladder_channel, params)
-# alleles = preannotate_peaks(ladder_channel, params)
-# result = align_ladder(ladder_channel, params, size_standards)
-#
-# for channel in fsa.non_ladder_channel():
-#     scan_peaks(channel, params)
-#     preannotate_peaks(channel, params)
-#     call_peaks(channel, params)
-#     bin_peaks(channel, params)
-#     postannotate_peaks(channel, params)
-#
-# the high level methods
-#
-#  fsa = import_fsa()
-#  fsa.align_ladder(params.ladder)
-#  fsa.scan_peaks(params.nonladder, marker=None)
-#  fsa.preannotate_peaks(params.nonladder, marker=None)
-#  fsa.call_peaks(params.nonladder, marker=None)
-#  fsa.bin_peaks(params.nonladder, marker=None)

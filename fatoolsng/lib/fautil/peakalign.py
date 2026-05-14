@@ -12,7 +12,6 @@ def fast_align(data, ladders, peaks, qcfunc):
 
     hq_peaks = [p for p in peaks if p.qscore >= 0.99]
 
-    # cerr(' -> HQ peak: %d / %d' % (len(hq_peaks), len(peaks)))
 
     hq_score = mq_score = -1
 
@@ -155,8 +154,6 @@ def z_align(peaks, ladders, peak_pairs):
                                  3 if len(peak_pairs) > 2 else 1)
 
         peak_pairs, rss = estimate_peak_pairs(peaks, ladders, z)
-        # cdbg(' z_align() step %d ==> %5.2f' % (step, rss))
-        # pprint.pprint(peak_pairs)
 
         if last_rss < 0:
             last_rss = rss
@@ -178,13 +175,9 @@ def do_fast_align(initial_peaks, ladders, all_peaks):
     peak_pairs = list(zip(reversed([p.rtime for p in initial_peaks]),
                           reversed(ladders)))
     peak_pairs.sort()
-    # print('fast_align with %d peaks.' % len(peak_pairs))
-    # pprint.pprint(peak_pairs)
     if len(initial_peaks) < len(ladders):
         initial_peaks = all_peaks
     result = progressive_align(initial_peaks, ladders, peak_pairs)
-    # print(' * dp_score =', dp_score)
-    # pprint.pprint(dp_peaks)
     return result[:4]
 
 
@@ -211,10 +204,8 @@ def iterative_align(peaks, ladders, peak_pairs, all_peaks):
         dp_score, dp_rss, dp_z, dp_peaks, S, D = progressive_align(peaks,
                                                                    ladders,
                                                                    peak_pairs)
-        # print(' * dp_score =', dp_score )
 
         if abs(dp_score - last_dp) < 0.1:
-            # print(' ==> latest dp_score: ', dp_score)
             break
         elif dp_score < last_dp:
             dp_score = last_dp
@@ -225,7 +216,6 @@ def iterative_align(peaks, ladders, peak_pairs, all_peaks):
             D = last_D
             break
 
-        # cerr(' ** ===> reiterate peak alignment' )
         last_dp = dp_score
         last_rss = dp_rss
         last_z = dp_z
@@ -238,7 +228,6 @@ def iterative_align(peaks, ladders, peak_pairs, all_peaks):
         # if dp_rss > min_rss:
         peaks = all_peaks
         peak_pairs = reassign_peaks(peaks, ladders, dp_z)
-        # pprint.pprint(peak_pairs)
 
     return ((dp_score, dp_rss, dp_z, dp_peaks, S, D))
 
@@ -246,7 +235,6 @@ def iterative_align(peaks, ladders, peak_pairs, all_peaks):
 def reassign_peaks(peaks, ladders, z):
     """ reassign peaks & ladders, with (z)(rtime) -> bp size """
 
-    # print(' => Z:', z)
     f = poly1d(z)
     peak_rtime = [(f(p.rtime), p.rtime) for p in peaks]
     peak_pairs = []
@@ -267,7 +255,6 @@ def shift_peak_pairs(peak_pairs, z):
 
     for (idx, peak_pair) in enumerate(peak_pairs):
         deviation = abs(f(peak_pair[1].rtime) - peak_pair[0])
-        # cerr('  %2d  %3d  %6d  %5.2f' % (idx, peak_pair[0], peak_pair[1].rtime, deviation))
         if deviation > max_value:
             max_value = deviation
             max_i = idx
@@ -291,10 +278,8 @@ def shift_peak_pairs(peak_pairs, z):
             # new_peak_pairs.append(peak_pairs[i])
             new_peak_pairs.append((peak_pairs[i][1].rtime, peak_pairs[i][0]))
 
-    # cerr('after shifting...')
     # for (idx, peak_pair) in enumerate(new_peak_pairs):
     #    deviation = abs( f( peak_pair[0] ) - peak_pair[1] )
-    #    cerr('  %2d  %3d  %6d  %5.2f' % (idx, peak_pair[1], peak_pair[0], deviation))
 
     return new_peak_pairs
 
@@ -310,7 +295,6 @@ def estimate_peak_pairs(peaks, ladders, z):
     for ladder in ladders:
         standard_peaks.append((f(ladder), ladder))
 
-    # pprint.pprint(standard_peaks)
 
     # align peaks, must be done twice
 

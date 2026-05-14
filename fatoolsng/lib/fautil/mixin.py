@@ -71,7 +71,6 @@ class ChannelMixIn(ABC):
                                   if self.is_ladder()
                                   else parameters.nonladder)
 
-        # import pprint; pprint.pprint(alleles)
 
 #    def preannotate(self, parameters):
 #        pass
@@ -104,8 +103,6 @@ class ChannelMixIn(ABC):
         fsa.status = const.assaystatus.aligned
         fsa.ztranspose = dpresult.ztranspose
 
-        # import pprint; pprint.pprint(dpresult.sized_peaks)
-        # print(fsa.z)
         cout(f"O: Score {fsa.score:3.2f} | {fsa.rss:5.2f} | {fsa.nladder}/{len(ladder['sizes'])} | {result.method} | {fsa.duration:5.1f} | {fsa.filename}")
 
     def call(self, parameters, func, min_rtime, max_rtime):
