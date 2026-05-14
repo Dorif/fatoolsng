@@ -1,5 +1,5 @@
-from numpy import poly1d
-from jax.numpy import polyfit, insert, zeros, array, log10, linspace
+from numpy import poly1d, zeros as np_zeros
+from jax.numpy import polyfit, insert, array, log10, linspace
 from math import sqrt, exp, log
 # import pprint
 
@@ -105,7 +105,7 @@ def generate_scores(ladders, peaks, func, tolerance=4):
         S[ladder][peak] = 1 if ladder & peak are similar
 
     """
-    M = zeros((len(ladders), len(peaks)), dtype='d')
+    M = np_zeros((len(ladders), len(peaks)), dtype='d')
 
     _TOL = 0.001
     cutoff = tolerance * sqrt(-1.0 * log(_TOL))
@@ -201,7 +201,7 @@ def dp(S, gap_penalty, peak_penalty=0):
     missing_20 = row_length/4
 
     # D contains the score of the optimal alignment
-    D = zeros((row_length+1, col_length+1), dtype='d')
+    D = np_zeros((row_length+1, col_length+1), dtype='d')
     for i in range(1, row_length+1):
         # D[i,0] = 0 if i < missing_20 else gap_penalty*(i-missing_20)
         # missing ladders
@@ -217,7 +217,7 @@ def dp(S, gap_penalty, peak_penalty=0):
     # 1 - peaks1 has no match (move up)
     # 2 - peaks2 has no match (move left)
     # 3 - stop
-    trace_matrix = zeros((row_length+1, col_length+1))
+    trace_matrix = np_zeros((row_length+1, col_length+1))
     trace_matrix[:, 0] = 1
     trace_matrix[0, :] = 2
     trace_matrix[0, 0] = 3

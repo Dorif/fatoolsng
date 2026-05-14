@@ -53,3 +53,7 @@ where = ["."]
 testpaths = ["fatoolsng/tests"]
 python_files = "test_*.py"
 python_functions = "test_*"
+markers = [
+    "slow: marks tests that run stochastic optimisation (deselect with -m 'not slow')",
+]
+addopts = "-m 'not slow'"

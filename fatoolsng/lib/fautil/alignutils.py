@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from fatoolsng.lib.utils import cerr  # , cout
 from fatoolsng.lib.fautil.dpalign import dp
-from numpy import poly1d, asarray as _np_asarray
-from jax.numpy import zeros, polyfit, linspace, log10
+from numpy import poly1d, asarray as _np_asarray, zeros as np_zeros
+from jax.numpy import polyfit, linspace, log10
 from dataclasses import dataclass
 from typing import Any, Callable
 from math import sqrt, log, exp
@@ -139,41 +139,6 @@ def pair_f(f, rtimes, std_sizes, similarity, deviation=False):
     return peak_pairs
 
 
-def generate_scores_xxx(sizes, rtimes, func, tolerance=4):
-    """ return a numpy matrix for scoring peak similarity
-            func -> polynomial fit funcs
-            size[bp] = func(rtime[sec])
-
-        Score matrix is
-
-                  peak1   peak2   peak3
-        ladder1
-        ladder2
-        ladder3
-
-        S[ladder][peak] = 1 if ladder & peak are similar
-
-    """
-    M = zeros((len(sizes), len(rtimes)), dtype='d')
-
-    _TOL = 0.001
-    cutoff = tolerance * sqrt(-1.0 * log(_TOL))
-    ladder_N = len(sizes)
-
-    row = 0
-    col = 0
-
-    for peak in rtimes:
-        size = func(peak)
-        for ladder in sizes:
-            M[row][col] = exp(-((size-ladder)/(tolerance))**2 / 2)
-            row += 1
-        col += 1
-        row = 0
-
-    return M
-
-
 def generate_scores(sizes, rtimes, similarity, func, tolerance=4):
     """ return a numpy matrix for scoring peak similarity
             func -> polynomial fit funcs
@@ -189,7 +154,7 @@ def generate_scores(sizes, rtimes, similarity, func, tolerance=4):
         S[ladder][peak] = 1 if ladder & peak are similar
 
     """
-    M = zeros((len(sizes), len(rtimes)), dtype='d')
+    M = np_zeros((len(sizes), len(rtimes)), dtype='d')
 
     _TOL = 0.001
     cutoff = tolerance * sqrt(-1.0 * log(_TOL))

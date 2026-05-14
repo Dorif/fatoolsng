@@ -16,7 +16,6 @@ from scipy.ndimage import white_tophat
 from scipy.signal import medfilt, savgol_filter
 from scipy.optimize import curve_fit
 from peakutils import indexes
-from matplotlib import pyplot as plt
 from sortedcontainers import SortedListWithKey
 
 
@@ -146,18 +145,16 @@ def align_ladder(alleles, ladder, anchor_pairs):
 
     if len(alleles) <= len(ladder['sizes']) + 5:
         result = align_hc(alleles, ladder)
-
         if result.score > 0.9:
             return result
+        if result.initial_pairs:
+            result = align_gm(alleles, ladder, result.initial_pairs)
+            if result.score > 0.75:
+                return result
 
-    return align_pm(alleles, ladder)
-
-    # end of function,
-
-    if result.initial_pairs:
-        result = align_gm(alleles, ladder, result.initial_pairs)
-        if result.score > 0.75:
-            return result
+    result = align_pm(alleles, ladder)
+    if result.score > 0.75:
+        return result
 
     result = align_sh(alleles, ladder)
     if result.score > 0.75:
@@ -165,22 +162,6 @@ def align_ladder(alleles, ladder, anchor_pairs):
 
     # perform differential evolution
     return align_de(alleles, ladder)
-
-    raise RuntimeError
-
-    result = hclust_align(alleles, ladder)
-
-    # add relevant info to peaks
-    aligned_peaks = result[2][3]
-    f = poly1d(result[2][2])
-    for (size, p) in aligned_peaks:
-        p.dev = abs(f(p.rtime) - size)
-        p.size = size
-    z, rss = estimate_z([p[1].rtime for p in aligned_peaks],
-                        [p[0] for p in aligned_peaks], 3)
-    print('>>> RSS:', rss)
-#    import pprint; pprint.pprint( aligned_peaks )
-    return result
 
 
 def call_peaks(channel: Any, params: Any, func: Callable, min_rtime: int, max_rtime: int) -> None:
@@ -540,10 +521,6 @@ def filter_for_ladder(peaks, params):
     epn = params.expected_peak_number   # this is the number of ladder peaks
 
     return peaks
-
-
-def baseline_als(y, lam, p, niter=10):
-    pass
 
 
 @dataclass

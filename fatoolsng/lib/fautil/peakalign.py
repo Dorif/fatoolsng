@@ -121,9 +121,9 @@ def greedy_align(data, ladders, peaks, qcfunc):
             if score_shift > 0.99:
                 return (score_shift, msg_shift, result_shift[:4],
                         alignmethod.greedy_shifted)
-            if result_shift[0] <= dp_score and
-               ((result_shift[1] >= dp_rss and score_shift <= score) or
-                counter > 50):
+            if (result_shift[0] <= dp_score and
+                    ((result_shift[1] >= dp_rss and score_shift <= score) or
+                     counter > 50)):
                 break
             dp_score, dp_rss, dp_z, dp_peaks = result_shift[:4]
             score = score_shift

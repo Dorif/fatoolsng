@@ -1,8 +1,7 @@
 
 from numpy import poly1d
-from jax.scipy.optimize import minimize
-from scipy.optimize import differential_evolution
-from fatoolsng.lib.utils import cerr
+from scipy.optimize import minimize, differential_evolution
+from fatoolsng.lib.utils import cerr, is_verbosity
 from fatoolsng.lib import const
 from fatoolsng.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
                                              pair_sized_peaks, DPResult,
@@ -12,19 +11,12 @@ from fatoolsng.lib.fautil.alignutils import (estimate_z, pair_f, align_dp,
 
 class ZFunc:
 
-    def __init__(self, peaks, sizes, anchor_pairs):
-        """
-        """
-
-
-class ZFunc:
-
     def __init__(self, peaks, sizes, anchor_pairs, estimate=False):
         """
         peaks, sizes and anchor_pairs must be in ascending order
         """
         self.set_sizes(sizes)
-        self.peaks = list(sorted(peaks))
+        self.peaks = list(sorted(peaks, key=lambda p: p.rtime))
         self.rtimes = [p.rtime for p in self.peaks]
         self.anchor_rtimes = [a[0] for a in anchor_pairs]
         self.anchor_sizes = [a[1] for a in anchor_pairs]
@@ -51,8 +43,8 @@ class ZFunc:
         for order in orders:
             zresult = estimate_z(self.anchor_rtimes, self.anchor_sizes, order)
 
-            zres = align_dp(self.rtimes, self.sizes, zresult.z, zresult.rss,
-                            order)
+            zres = align_dp(self.rtimes, self.sizes, self.similarity,
+                            zresult.z, zresult.rss, order)
 
             zresults.append(zres)
 
@@ -163,9 +155,7 @@ def align_gm(peaks, ladder, anchor_pairs, z=None):
     zresult = results[0]
 
     # last dp
-    dp_result = align_dp(f.rtimes, f.sizes, zresult.z, zresult.rss)
-    # import pprint; pprint.pprint(dp_result.sized_peaks)
-    # plot(f.rtimes, f.sizes, dp_result.z, [(x[1], x[0]) for x in dp_result.sized_peaks])
+    dp_result = align_dp(f.rtimes, f.sizes, f.similarity, zresult.z, zresult.rss)
 
     dp_result.sized_peaks = f.get_sized_peaks(dp_result.sized_peaks)
 
@@ -231,9 +221,7 @@ def align_de(peaks, ladder, initial_pair=[]):
     zres = results[0]
 
     # last dp
-    dp_result = align_dp(f.rtimes, f.sizes, zres.z, zres.rss)
-    # plot(f.rtimes, f.sizes, dp_result.z, [(x[1], x[0]) for x in dp_result.sized_peaks])
-    # import pprint; pprint.pprint(dp_result.sized_peaks)
+    dp_result = align_dp(f.rtimes, f.sizes, f.similarity, zres.z, zres.rss)
 
     dp_result.sized_peaks = f.get_sized_peaks(dp_result.sized_peaks)
 
@@ -272,6 +260,7 @@ def estimate_de(peaks, sizes):
     results.sort(key=lambda x: x[0].rss)
     zres, pairs = results[0]
 
-    plot(f.rtimes, f.sizes, zres.z, pairs)
+    if is_verbosity(5):
+        plot(f.rtimes, f.sizes, zres.z, pairs)
 
     return pairs, zres.z

@@ -61,6 +61,8 @@ class alignmethod(str, Enum):
     hcm_relax       = 'hcm|relax'
     gm_strict       = 'gm|strict'
     gm_relax        = 'gm|relax'
+    sh_strict       = 'sh|strict'
+    sh_relax        = 'sh|relax'
     de_relax        = 'de|relax'
 
 
